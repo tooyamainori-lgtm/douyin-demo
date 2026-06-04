@@ -95,6 +95,18 @@ CREATE TABLE `like_record` (
     KEY `idx_like_video_id` (`video_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='点赞记录表';
 
+-- 视频收藏表
+CREATE TABLE `video_favorite` (
+    `id`          BIGINT     NOT NULL COMMENT '主键ID',
+    `user_id`     BIGINT     NOT NULL COMMENT '用户ID',
+    `video_id`    BIGINT     NOT NULL COMMENT '视频ID',
+    `create_time` DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
+    `is_deleted`  TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_favorite_user_video` (`user_id`, `video_id`),
+    KEY `idx_favorite_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频收藏表';
+
 -- 评论表
 CREATE TABLE `comment` (
     `id`          BIGINT       NOT NULL COMMENT '主键ID',

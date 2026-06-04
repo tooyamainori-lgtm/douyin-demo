@@ -7,7 +7,9 @@ import com.douyin.common.exception.BusinessException;
 import com.douyin.entity.LikeRecord;
 import com.douyin.entity.User;
 import com.douyin.entity.Video;
+import com.douyin.entity.VideoFavorite;
 import com.douyin.mapper.LikeRecordMapper;
+import com.douyin.mapper.VideoFavoriteMapper;
 import com.douyin.mapper.UserMapper;
 import com.douyin.mapper.VideoMapper;
 import com.douyin.service.VideoService;
@@ -40,6 +42,7 @@ public class VideoServiceImpl implements VideoService {
     private final VideoMapper videoMapper;
     private final UserMapper userMapper;
     private final LikeRecordMapper likeRecordMapper;
+    private final VideoFavoriteMapper favoriteMapper;
 
     @Value("${douyin.upload.path:uploads}")
     private String uploadPath;
@@ -129,14 +132,18 @@ public class VideoServiceImpl implements VideoService {
         User author = userMapper.selectById(video.getUserId());
         // 检查当前用户是否已点赞
         boolean isLiked = false;
+        boolean isFavorited = false;
         if (userId != null) {
-            Long count = likeRecordMapper.selectCount(
+            isLiked = likeRecordMapper.selectCount(
                     new LambdaQueryWrapper<LikeRecord>()
                             .eq(LikeRecord::getUserId, userId)
-                            .eq(LikeRecord::getVideoId, videoId));
-            isLiked = count > 0;
+                            .eq(LikeRecord::getVideoId, videoId)) > 0;
+            isFavorited = favoriteMapper.selectCount(
+                    new LambdaQueryWrapper<VideoFavorite>()
+                            .eq(VideoFavorite::getUserId, userId)
+                            .eq(VideoFavorite::getVideoId, videoId)) > 0;
         }
-        return buildVideoVO(video, author, isLiked);
+        return buildVideoVO(video, author, isLiked, isFavorited);
     }
 
     @Override
@@ -183,10 +190,32 @@ public class VideoServiceImpl implements VideoService {
         }
     }
 
+    @Override
+    public PageResult<VideoVO> getUserVideos(Long userId, Integer page, Integer size) {
+        LambdaQueryWrapper<Video> wrapper = new LambdaQueryWrapper<Video>()
+                .eq(Video::getUserId, userId)
+                .eq(Video::getStatus, 1)
+                .orderByDesc(Video::getCreateTime);
+
+        Page<Video> mpPage = new Page<>(page, size);
+        Page<Video> result = videoMapper.selectPage(mpPage, wrapper);
+
+        User author = userMapper.selectById(userId);
+        List<VideoVO> records = result.getRecords().stream()
+                .map(v -> buildVideoVO(v, author, false))
+                .collect(Collectors.toList());
+
+        return PageResult.of(result.getTotal(), result.getCurrent(), result.getSize(), records);
+    }
+
     /**
      * 构建 VideoVO
      */
     private VideoVO buildVideoVO(Video video, User author, boolean isLiked) {
+        return buildVideoVO(video, author, isLiked, false);
+    }
+
+    private VideoVO buildVideoVO(Video video, User author, boolean isLiked, boolean isFavorited) {
         VideoAuthorVO authorVO = null;
         if (author != null) {
             authorVO = VideoAuthorVO.builder()
@@ -213,6 +242,7 @@ public class VideoServiceImpl implements VideoService {
                 .createTime(video.getCreateTime() != null ? video.getCreateTime().toString() : null)
                 .author(authorVO)
                 .isLiked(isLiked)
+                .isFavorited(isFavorited)
                 .build();
     }
 }

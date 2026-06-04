@@ -1,7 +1,22 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
+const router = useRouter()
+const route = useRoute()
+
+const keyword = ref((route.query.keyword as string) || '')
+
+/** 搜索 */
+function handleSearch() {
+  if (keyword.value.trim()) {
+    router.push({ path: '/', query: { keyword: keyword.value.trim() } })
+  } else {
+    router.push({ path: '/' })
+  }
+}
 
 function handleLogout() {
   userStore.logout()
@@ -11,6 +26,20 @@ function handleLogout() {
 <template>
   <header class="navbar">
     <router-link to="/" class="navbar-brand">Douyin Demo</router-link>
+
+    <div class="navbar-search">
+      <el-input
+        v-model="keyword"
+        placeholder="搜索视频..."
+        size="small"
+        clearable
+        @keyup.enter="handleSearch"
+      >
+        <template #suffix>
+          <el-icon class="search-icon" @click="handleSearch" style="cursor:pointer">🔍</el-icon>
+        </template>
+      </el-input>
+    </div>
 
     <nav class="navbar-nav">
       <router-link to="/">首页</router-link>
@@ -43,6 +72,7 @@ function handleLogout() {
   position: sticky;
   top: 0;
   z-index: 100;
+  gap: 16px;
 }
 
 .navbar-brand {
@@ -50,18 +80,25 @@ function handleLogout() {
   font-weight: bold;
   color: #303133;
   text-decoration: none;
+  flex-shrink: 0;
+}
+
+.navbar-search {
+  flex: 1;
+  max-width: 360px;
 }
 
 .navbar-nav a {
   color: #606266;
   text-decoration: none;
-  margin-right: 16px;
+  flex-shrink: 0;
 }
 
 .navbar-user {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .user-info {

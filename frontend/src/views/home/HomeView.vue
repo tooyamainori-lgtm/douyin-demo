@@ -1,23 +1,33 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { videoApi, type VideoInfo } from '@/api/video'
 
 const router = useRouter()
+const route = useRoute()
 const videos = ref<VideoInfo[]>([])
 const total = ref(0)
 const page = ref(1)
 const size = 10
 const loading = ref(false)
+const keyword = ref((route.query.keyword as string) || '')
 
 onMounted(() => {
+  fetchVideos()
+})
+
+// 搜索关键词变化时重新拉取
+watch(() => route.query.keyword, (val) => {
+  keyword.value = (val as string) || ''
+  page.value = 1
   fetchVideos()
 })
 
 async function fetchVideos() {
   loading.value = true
   try {
-    const result = await videoApi.list(page.value, size)
+    const kw = keyword.value || undefined
+    const result = await videoApi.list(page.value, size, kw)
     videos.value = result.records
     total.value = result.total
   } finally {
@@ -48,7 +58,8 @@ function formatTime(time: string): string {
 <template>
   <div class="home-feed">
     <div class="feed-header">
-      <h2>推荐视频</h2>
+      <h2 v-if="keyword">搜索：{{ keyword }}</h2>
+      <h2 v-else>推荐视频</h2>
       <span class="feed-count">共 {{ total }} 个视频</span>
     </div>
 

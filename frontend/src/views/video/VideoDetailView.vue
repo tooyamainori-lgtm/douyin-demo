@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { videoApi, commentApi, type VideoInfo, type CommentInfo } from '@/api/video'
+import { videoApi, commentApi, favoriteApi, type VideoInfo, type CommentInfo } from '@/api/video'
 import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
@@ -12,6 +12,7 @@ const userStore = useUserStore()
 const video = ref<VideoInfo | null>(null)
 const loading = ref(true)
 const likeLoading = ref(false)
+const favLoading = ref(false)
 const hasRecordedView = ref(false)
 
 // 评论
@@ -121,6 +122,31 @@ async function toggleLike() {
   }
 }
 
+/** 收藏/取消收藏 */
+async function toggleFavorite() {
+  if (!userStore.isLogin) {
+    ElMessage.warning('请先登录')
+    router.push('/login')
+    return
+  }
+  if (!video.value) return
+
+  favLoading.value = true
+  try {
+    if (video.value.isFavorited) {
+      await favoriteApi.remove(video.value.id)
+      video.value.isFavorited = false
+      ElMessage.success('已取消收藏')
+    } else {
+      await favoriteApi.add(video.value.id)
+      video.value.isFavorited = true
+      ElMessage.success('收藏成功')
+    }
+  } finally {
+    favLoading.value = false
+  }
+}
+
 /** 格式化 */
 function formatCount(count: number): string {
   if (count >= 10000) return (count / 10000).toFixed(1) + '万'
@@ -170,6 +196,14 @@ function formatTime(time: string): string {
           >
             {{ video.isLiked ? '❤ 已点赞' : '🤍 点赞' }}
             ({{ formatCount(video.likeCount) }})
+          </el-button>
+          <el-button
+            :type="video.isFavorited ? 'warning' : 'default'"
+            size="large"
+            :loading="favLoading"
+            @click="toggleFavorite"
+          >
+            {{ video.isFavorited ? '⭐ 已收藏' : '☆ 收藏' }}
           </el-button>
         </div>
 

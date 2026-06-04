@@ -1,23 +1,44 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { userApi, type UserProfile } from '@/api/user'
+import { videoApi, type VideoInfo } from '@/api/video'
 
 const route = useRoute()
+const router = useRouter()
 const profile = ref<UserProfile | null>(null)
+const videos = ref<VideoInfo[]>([])
 const loading = ref(true)
 
 onMounted(async () => {
   try {
     const userId = route.params.id as string
     profile.value = await userApi.getUserProfile(userId)
+    fetchVideos(userId)
   } catch {
     ElMessage.error('加载用户信息失败')
   } finally {
     loading.value = false
   }
 })
+
+async function fetchVideos(userId: string) {
+  try {
+    // 直接调用 videoApi，复用现有列表接口加用户过滤
+    const result = await videoApi.listByUser(userId, 1, 12)
+    videos.value = result.records
+  } catch { /* ignore */ }
+}
+
+function goToDetail(id: string) {
+  router.push(`/video/${id}`)
+}
+
+function formatCount(n: number) {
+  if (n >= 10000) return (n / 10000).toFixed(1) + '万'
+  return String(n)
+}
 </script>
 
 <template>
@@ -52,6 +73,27 @@ onMounted(async () => {
       <p class="create-time" v-if="profile?.createTime">
         {{ new Date(profile.createTime).toLocaleDateString('zh-CN') }} 加入
       </p>
+
+      <!-- 作品列表 -->
+      <div class="user-videos" v-if="videos.length > 0">
+        <h3>作品 ({{ videos.length }})</h3>
+        <div class="video-mini-grid">
+          <div
+            v-for="v in videos"
+            :key="v.id"
+            class="video-mini-card"
+            @click="goToDetail(v.id)"
+          >
+            <div class="mini-cover">
+              <div class="cover-placeholder">▶</div>
+            </div>
+            <div class="mini-info">
+              <span class="mini-title">{{ v.title }}</span>
+              <span class="mini-views">{{ formatCount(v.viewCount) }} 播放</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -130,5 +172,57 @@ onMounted(async () => {
 .create-time {
   color: #c0c4cc;
   font-size: 12px;
+}
+
+.user-videos {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #f0f0f0;
+  text-align: left;
+}
+
+.user-videos h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.video-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.video-mini-card {
+  cursor: pointer;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f5f7fa;
+}
+
+.mini-cover {
+  aspect-ratio: 16 / 9;
+  background: #e4e7ed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+}
+
+.mini-info {
+  padding: 8px;
+}
+
+.mini-title {
+  display: block;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-views {
+  font-size: 11px;
+  color: #909399;
 }
 </style>

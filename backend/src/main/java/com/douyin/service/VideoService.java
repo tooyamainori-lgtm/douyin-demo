@@ -62,4 +62,14 @@ public interface VideoService {
      * @param userId  用户ID
      */
     void unlike(Long videoId, Long userId);
+
+    /**
+     * 获取用户发布的视频列表
+     *
+     * @param userId 用户ID
+     * @param page   页码
+     * @param size   每页条数
+     * @return 分页结果
+     */
+    PageResult<VideoVO> getUserVideos(Long userId, Integer page, Integer size);
 }

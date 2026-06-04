@@ -25,6 +25,7 @@ export interface VideoInfo {
   createTime: string
   author: VideoAuthor
   isLiked: boolean
+  isFavorited: boolean
 }
 
 /** 分页结果 */
@@ -49,6 +50,11 @@ export const videoApi = {
   /** 视频详情 */
   getDetail(id: string) {
     return request.get<any, VideoInfo>(`/api/v1/videos/${id}`)
+  },
+
+  /** 用户作品列表 */
+  listByUser(userId: string, page: number, size: number) {
+    return request.get<any, PageResult<VideoInfo>>(`/api/v1/users/${userId}/videos?page=${page}&size=${size}`)
   },
 
   /** 播放量统计 */
@@ -90,6 +96,18 @@ export interface CommentParams {
 /**
  * 评论 API
  */
+export const favoriteApi = {
+  add(videoId: string) {
+    return request.post(`/api/v1/videos/${videoId}/favorite`)
+  },
+  remove(videoId: string) {
+    return request.delete(`/api/v1/videos/${videoId}/favorite`)
+  },
+  list(page: number, size: number) {
+    return request.get<any, PageResult<VideoInfo>>(`/api/v1/users/me/favorites?page=${page}&size=${size}`)
+  },
+}
+
 export const commentApi = {
   /** 获取评论列表 */
   list(videoId: string) {

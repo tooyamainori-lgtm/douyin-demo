@@ -1,11 +1,14 @@
 package com.douyin.controller;
 
+import com.douyin.common.PageResult;
 import com.douyin.common.Result;
 import com.douyin.dto.LoginDTO;
 import com.douyin.dto.RegisterDTO;
 import com.douyin.service.UserService;
+import com.douyin.service.VideoService;
 import com.douyin.vo.UserProfileVO;
 import com.douyin.vo.UserVO;
+import com.douyin.vo.VideoVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final VideoService videoService;
 
     /**
      * 用户注册
@@ -69,5 +73,22 @@ public class UserController {
     public Result<UserProfileVO> getUserProfile(@PathVariable Long id) {
         UserProfileVO vo = userService.getUserProfile(id);
         return Result.ok(vo);
+    }
+
+    /**
+     * 获取用户发布的视频
+     *
+     * @param id   用户ID
+     * @param page 页码
+     * @param size 每页条数
+     * @return 视频分页
+     */
+    @GetMapping("/{id}/videos")
+    public Result<PageResult<VideoVO>> getUserVideos(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        PageResult<VideoVO> result = videoService.getUserVideos(id, page, size);
+        return Result.ok(result);
     }
 }
