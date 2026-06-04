@@ -15,7 +15,7 @@ onMounted(async () => {
   try {
     const userId = route.params.id as string
     profile.value = await userApi.getUserProfile(userId)
-    fetchVideos(userId)
+    await fetchVideos(userId)
   } catch {
     ElMessage.error('加载用户信息失败')
   } finally {
@@ -28,7 +28,7 @@ async function fetchVideos(userId: string) {
     // 直接调用 videoApi，复用现有列表接口加用户过滤
     const result = await videoApi.listByUser(userId, 1, 12)
     videos.value = result.records
-  } catch { /* ignore */ }
+  } catch (e) { console.error('加载用户作品失败', e) }
 }
 
 function goToDetail(id: string) {
@@ -75,9 +75,9 @@ function formatCount(n: number) {
       </p>
 
       <!-- 作品列表 -->
-      <div class="user-videos" v-if="videos.length > 0">
+      <div class="user-videos">
         <h3>作品 ({{ videos.length }})</h3>
-        <div class="video-mini-grid">
+        <div class="video-mini-grid" v-if="videos.length > 0">
           <div
             v-for="v in videos"
             :key="v.id"
@@ -93,6 +93,7 @@ function formatCount(n: number) {
             </div>
           </div>
         </div>
+        <p class="no-videos" v-else>暂无作品</p>
       </div>
     </div>
   </div>
@@ -224,5 +225,12 @@ function formatCount(n: number) {
 .mini-views {
   font-size: 11px;
   color: #909399;
+}
+
+.no-videos {
+  color: #c0c4cc;
+  font-size: 14px;
+  text-align: center;
+  padding: 12px 0;
 }
 </style>
