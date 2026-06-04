@@ -1,0 +1,42 @@
+package com.douyin.service;
+
+import com.douyin.common.PageResult;
+import com.douyin.vo.VideoVO;
+import org.springframework.web.multipart.MultipartFile;
+
+/**
+ * 视频服务接口
+ */
+public interface VideoService {
+
+    /**
+     * 上传视频
+     *
+     * @param file        视频文件
+     * @param title       标题
+     * @param description 描述
+     * @param tags        标签
+     * @param userId      上传者ID
+     * @return 视频信息
+     */
+    VideoVO upload(MultipartFile file, String title, String description, String tags, Long userId);
+
+    /**
+     * 分页查询视频列表
+     *
+     * @param page   页码
+     * @param size   每页条数
+     * @param keyword 搜索关键词（可选）
+     * @return 分页结果
+     */
+    PageResult<VideoVO> page(Integer page, Integer size, String keyword);
+
+    /**
+     * 获取视频详情
+     *
+     * @param videoId 视频ID
+     * @param userId  当前用户ID（可为null）
+     * @return 视频详情
+     */
+    VideoVO getDetail(Long videoId, Long userId);
+}
