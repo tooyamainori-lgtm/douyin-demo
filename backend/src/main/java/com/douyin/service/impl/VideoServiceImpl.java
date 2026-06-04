@@ -13,6 +13,7 @@ import com.douyin.mapper.VideoFavoriteMapper;
 import com.douyin.mapper.UserMapper;
 import com.douyin.mapper.VideoMapper;
 import com.douyin.service.VideoService;
+import com.douyin.util.RedisUtil;
 import com.douyin.vo.VideoAuthorVO;
 import com.douyin.vo.VideoVO;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -43,6 +45,7 @@ public class VideoServiceImpl implements VideoService {
     private final UserMapper userMapper;
     private final LikeRecordMapper likeRecordMapper;
     private final VideoFavoriteMapper favoriteMapper;
+    private final RedisUtil redisUtil;
 
     @Value("${douyin.upload.path:uploads}")
     private String uploadPath;
@@ -152,6 +155,8 @@ public class VideoServiceImpl implements VideoService {
         if (video != null) {
             video.setViewCount(video.getViewCount() + 1);
             videoMapper.updateById(video);
+            // 更新热门排行榜：播放 +1
+            redisUtil.addHotScore(videoId, 1);
         }
     }
 
@@ -175,6 +180,8 @@ public class VideoServiceImpl implements VideoService {
         if (video != null) {
             video.setLikeCount(video.getLikeCount() + 1);
             videoMapper.updateById(video);
+            // 更新热门排行榜：点赞 +3
+            redisUtil.addHotScore(videoId, 3);
         }
     }
 
@@ -187,6 +194,8 @@ public class VideoServiceImpl implements VideoService {
         if (video != null && video.getLikeCount() > 0) {
             video.setLikeCount(video.getLikeCount() - 1);
             videoMapper.updateById(video);
+            // 取消点赞热度 -3
+            redisUtil.addHotScore(videoId, -3);
         }
     }
 
@@ -206,6 +215,20 @@ public class VideoServiceImpl implements VideoService {
                 .collect(Collectors.toList());
 
         return PageResult.of(result.getTotal(), result.getCurrent(), result.getSize(), records);
+    }
+
+    @Override
+    public List<VideoVO> getHotRank(int top) {
+        Map<Long, Double> hotMap = redisUtil.getHotRank(top);
+        return hotMap.entrySet().stream()
+                .map(entry -> {
+                    Video video = videoMapper.selectById(entry.getKey());
+                    if (video == null) return null;
+                    User author = userMapper.selectById(video.getUserId());
+                    return buildVideoVO(video, author, false);
+                })
+                .filter(v -> v != null)
+                .collect(Collectors.toList());
     }
 
     /**

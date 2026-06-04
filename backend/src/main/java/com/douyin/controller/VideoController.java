@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 /**
  * 视频控制器
  */
@@ -110,5 +112,17 @@ public class VideoController {
             @RequestAttribute("userId") Long userId) {
         videoService.unlike(id, userId);
         return Result.ok();
+    }
+
+    /**
+     * 热门视频排行榜
+     *
+     * @param top 前 N 名（默认 10）
+     * @return 视频列表
+     */
+    @GetMapping("/hot")
+    public Result<List<VideoVO>> hotRank(@RequestParam(defaultValue = "10") int top) {
+        List<VideoVO> list = videoService.getHotRank(top);
+        return Result.ok(list);
     }
 }

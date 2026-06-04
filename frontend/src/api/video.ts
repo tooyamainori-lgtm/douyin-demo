@@ -71,6 +71,11 @@ export const videoApi = {
   unlike(id: string) {
     return request.delete(`/api/v1/videos/${id}/like`)
   },
+
+  /** 热门排行榜 */
+  getHot(top: number = 10) {
+    return request.get<any, VideoInfo[]>(`/api/v1/videos/hot?top=${top}`)
+  },
 }
 
 /** 评论信息 */

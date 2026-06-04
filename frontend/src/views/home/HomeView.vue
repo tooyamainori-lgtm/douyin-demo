@@ -11,6 +11,7 @@ const page = ref(1)
 const size = 10
 const loading = ref(false)
 const keyword = ref((route.query.keyword as string) || '')
+const tab = ref<'recommend' | 'hot'>('recommend')
 
 onMounted(() => {
   fetchVideos()
@@ -20,16 +21,28 @@ onMounted(() => {
 watch(() => route.query.keyword, (val) => {
   keyword.value = (val as string) || ''
   page.value = 1
+  tab.value = 'recommend'
+  fetchVideos()
+})
+
+// Tab 切换
+watch(tab, () => {
+  page.value = 1
   fetchVideos()
 })
 
 async function fetchVideos() {
   loading.value = true
   try {
-    const kw = keyword.value || undefined
-    const result = await videoApi.list(page.value, size, kw)
-    videos.value = result.records
-    total.value = result.total
+    if (tab.value === 'hot') {
+      videos.value = await videoApi.getHot(10)
+      total.value = videos.value.length
+    } else {
+      const kw = keyword.value || undefined
+      const result = await videoApi.list(page.value, size, kw)
+      videos.value = result.records
+      total.value = result.total
+    }
   } finally {
     loading.value = false
   }
@@ -58,8 +71,17 @@ function formatTime(time: string): string {
 <template>
   <div class="home-feed">
     <div class="feed-header">
+      <div class="feed-tabs" v-if="!keyword">
+        <span
+          :class="{ active: tab === 'recommend' }"
+          @click="tab = 'recommend'"
+        >推荐</span>
+        <span
+          :class="{ active: tab === 'hot' }"
+          @click="tab = 'hot'"
+        >🔥 热门</span>
+      </div>
       <h2 v-if="keyword">搜索：{{ keyword }}</h2>
-      <h2 v-else>推荐视频</h2>
       <span class="feed-count">共 {{ total }} 个视频</span>
     </div>
 
@@ -115,6 +137,26 @@ function formatTime(time: string): string {
 
 .feed-header h2 {
   font-size: 20px;
+}
+
+.feed-tabs {
+  display: flex;
+  gap: 20px;
+}
+
+.feed-tabs span {
+  font-size: 16px;
+  color: #909399;
+  cursor: pointer;
+  padding-bottom: 4px;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.feed-tabs span.active {
+  color: #303133;
+  font-weight: 600;
+  border-bottom-color: #fe2c55;
 }
 
 .feed-count {

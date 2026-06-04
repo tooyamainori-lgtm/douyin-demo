@@ -4,6 +4,8 @@ import com.douyin.common.PageResult;
 import com.douyin.vo.VideoVO;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 /**
  * 视频服务接口
  */
@@ -72,4 +74,12 @@ public interface VideoService {
      * @return 分页结果
      */
     PageResult<VideoVO> getUserVideos(Long userId, Integer page, Integer size);
+
+    /**
+     * 获取热门视频排行榜
+     *
+     * @param top 前 N 名
+     * @return 视频列表
+     */
+    List<VideoVO> getHotRank(int top);
 }
