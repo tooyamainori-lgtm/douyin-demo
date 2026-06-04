@@ -47,6 +47,7 @@ function handleLogout() {
 
     <div class="navbar-user">
       <template v-if="userStore.isLogin && userStore.user">
+        <router-link to="/favorites" class="nav-link">收藏</router-link>
         <router-link :to="`/user/${userStore.user.id}`" class="user-info">
           <span class="nickname">{{ userStore.user.nickname }}</span>
         </router-link>
@@ -104,6 +105,12 @@ function handleLogout() {
 .user-info {
   text-decoration: none;
   color: #303133;
+}
+
+.nav-link {
+  color: #606266;
+  text-decoration: none;
+  font-size: 14px;
 }
 
 .nickname {
