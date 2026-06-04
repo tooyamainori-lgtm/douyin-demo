@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.douyin.common.PageResult;
 import com.douyin.common.exception.BusinessException;
+import com.douyin.entity.LikeRecord;
 import com.douyin.entity.User;
 import com.douyin.entity.Video;
+import com.douyin.mapper.LikeRecordMapper;
 import com.douyin.mapper.UserMapper;
 import com.douyin.mapper.VideoMapper;
 import com.douyin.service.VideoService;
@@ -37,6 +39,7 @@ public class VideoServiceImpl implements VideoService {
 
     private final VideoMapper videoMapper;
     private final UserMapper userMapper;
+    private final LikeRecordMapper likeRecordMapper;
 
     @Value("${douyin.upload.path:uploads}")
     private String uploadPath;
@@ -124,8 +127,60 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException(2001, "视频不存在");
         }
         User author = userMapper.selectById(video.getUserId());
-        // TODO: 检查当前用户是否已点赞
-        return buildVideoVO(video, author, false);
+        // 检查当前用户是否已点赞
+        boolean isLiked = false;
+        if (userId != null) {
+            Long count = likeRecordMapper.selectCount(
+                    new LambdaQueryWrapper<LikeRecord>()
+                            .eq(LikeRecord::getUserId, userId)
+                            .eq(LikeRecord::getVideoId, videoId));
+            isLiked = count > 0;
+        }
+        return buildVideoVO(video, author, isLiked);
+    }
+
+    @Override
+    public void recordView(Long videoId) {
+        Video video = videoMapper.selectById(videoId);
+        if (video != null) {
+            video.setViewCount(video.getViewCount() + 1);
+            videoMapper.updateById(video);
+        }
+    }
+
+    @Override
+    public void like(Long videoId, Long userId) {
+        // 检查是否已存在活跃的点赞记录
+        Long count = likeRecordMapper.selectCount(
+                new LambdaQueryWrapper<LikeRecord>()
+                        .eq(LikeRecord::getUserId, userId)
+                        .eq(LikeRecord::getVideoId, videoId));
+        if (count > 0) {
+            throw new BusinessException(3002, "已经点过赞了");
+        }
+        // 插入点赞记录
+        LikeRecord record = new LikeRecord();
+        record.setUserId(userId);
+        record.setVideoId(videoId);
+        likeRecordMapper.insert(record);
+        // 更新视频点赞数
+        Video video = videoMapper.selectById(videoId);
+        if (video != null) {
+            video.setLikeCount(video.getLikeCount() + 1);
+            videoMapper.updateById(video);
+        }
+    }
+
+    @Override
+    public void unlike(Long videoId, Long userId) {
+        // 物理删除点赞记录
+        likeRecordMapper.physicalDelete(userId, videoId);
+        // 更新视频点赞数（确保不小于0）
+        Video video = videoMapper.selectById(videoId);
+        if (video != null && video.getLikeCount() > 0) {
+            video.setLikeCount(video.getLikeCount() - 1);
+            videoMapper.updateById(video);
+        }
     }
 
     /**
@@ -157,6 +212,7 @@ public class VideoServiceImpl implements VideoService {
                 .shareCount(video.getShareCount())
                 .createTime(video.getCreateTime() != null ? video.getCreateTime().toString() : null)
                 .author(authorVO)
+                .isLiked(isLiked)
                 .build();
     }
 }

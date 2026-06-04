@@ -54,4 +54,8 @@ public class VideoVO {
 
     /** 发布者信息 */
     private VideoAuthorVO author;
+
+    /** 当前用户是否已点赞 */
+    private Boolean isLiked;
 }
+

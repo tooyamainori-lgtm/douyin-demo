@@ -69,4 +69,46 @@ public class VideoController {
         VideoVO vo = videoService.getDetail(id, userId);
         return Result.ok(vo);
     }
+
+    /**
+     * 播放量统计
+     *
+     * @param id 视频ID
+     * @return 成功
+     */
+    @PostMapping("/{id}/view")
+    public Result<Void> recordView(@PathVariable Long id) {
+        videoService.recordView(id);
+        return Result.ok();
+    }
+
+    /**
+     * 点赞视频
+     *
+     * @param id     视频ID
+     * @param userId 当前用户ID
+     * @return 成功
+     */
+    @PostMapping("/{id}/like")
+    public Result<Void> like(
+            @PathVariable Long id,
+            @RequestAttribute("userId") Long userId) {
+        videoService.like(id, userId);
+        return Result.ok();
+    }
+
+    /**
+     * 取消点赞
+     *
+     * @param id     视频ID
+     * @param userId 当前用户ID
+     * @return 成功
+     */
+    @DeleteMapping("/{id}/like")
+    public Result<Void> unlike(
+            @PathVariable Long id,
+            @RequestAttribute("userId") Long userId) {
+        videoService.unlike(id, userId);
+        return Result.ok();
+    }
 }

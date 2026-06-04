@@ -39,4 +39,27 @@ public interface VideoService {
      * @return 视频详情
      */
     VideoVO getDetail(Long videoId, Long userId);
+
+    /**
+     * 播放量 +1
+     *
+     * @param videoId 视频ID
+     */
+    void recordView(Long videoId);
+
+    /**
+     * 点赞视频
+     *
+     * @param videoId 视频ID
+     * @param userId  用户ID
+     */
+    void like(Long videoId, Long userId);
+
+    /**
+     * 取消点赞
+     *
+     * @param videoId 视频ID
+     * @param userId  用户ID
+     */
+    void unlike(Long videoId, Long userId);
 }
