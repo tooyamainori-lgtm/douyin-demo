@@ -13,13 +13,18 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
 
 /**
  * Spring Security 配置 — JWT 无状态认证
@@ -30,6 +35,14 @@ import java.io.IOException;
 public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
+
+    /**
+     * 密码编码器 — BCrypt
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -45,8 +58,6 @@ public class SecurityConfig {
                         // 公开接口（无需登录）
                         .requestMatchers("/api/v1/users/register", "/api/v1/users/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/videos/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/videos/*/comments/**").permitAll()
                         // 其余接口需要认证
                         .anyRequest().authenticated()
                 )
@@ -57,7 +68,7 @@ public class SecurityConfig {
     }
 
     /**
-     * JWT 认证过滤器 — 从请求头中提取 Token 并设置 SecurityContext
+     * JWT 认证过滤器 — 从请求头中提取 Token，设置 SecurityContext
      */
     @Bean
     public OncePerRequestFilter jwtAuthenticationFilter() {
@@ -69,7 +80,11 @@ public class SecurityConfig {
                 String token = extractToken(request);
                 if (token != null && jwtUtil.validateToken(token)) {
                     Long userId = jwtUtil.getUserIdFromToken(token);
-                    // 将 userId 存入 request attribute，Controller 中通过 @RequestAttribute 获取
+                    // 设置 SecurityContext，使 Spring Security 认为已认证
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    // 同时存入 request attribute，方便 Controller 直接获取
                     request.setAttribute("userId", userId);
                 }
                 filterChain.doFilter(request, response);
@@ -78,9 +93,8 @@ public class SecurityConfig {
             @Override
             protected boolean shouldNotFilter(HttpServletRequest request) {
                 String path = request.getServletPath();
-                // 公开接口不经过 JWT 过滤器
-                return !path.startsWith("/api/v1/") ||
-                       path.equals("/api/v1/users/register") ||
+                // 注册和登录接口不需要 JWT 鉴权
+                return path.equals("/api/v1/users/register") ||
                        path.equals("/api/v1/users/login");
             }
         };
