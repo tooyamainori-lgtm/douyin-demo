@@ -25,6 +25,9 @@ public class Comment {
     /** 父评论ID（NULL 表示一级评论） */
     private Long parentId;
 
+    /** 被回复的用户ID */
+    private Long replyUserId;
+
     /** 评论内容 */
     private String content;
 

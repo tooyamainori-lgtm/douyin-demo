@@ -66,3 +66,43 @@ export const videoApi = {
     return request.delete(`/api/v1/videos/${id}/like`)
   },
 }
+
+/** 评论信息 */
+export interface CommentInfo {
+  id: string
+  content: string
+  likeCount: number
+  createTime: string
+  parentId: string | null
+  replyNickname: string | null
+  user: { id: string; nickname: string; avatarUrl: string | null }
+  replies: CommentInfo[]
+}
+
+/** 发送评论参数 */
+export interface CommentParams {
+  videoId: string
+  content: string
+  parentId?: string
+  replyUserId?: string
+}
+
+/**
+ * 评论 API
+ */
+export const commentApi = {
+  /** 获取评论列表 */
+  list(videoId: string) {
+    return request.get<any, CommentInfo[]>(`/api/v1/videos/${videoId}/comments`)
+  },
+
+  /** 发表评论 */
+  publish(videoId: string, data: CommentParams) {
+    return request.post<any, CommentInfo>(`/api/v1/videos/${videoId}/comments`, data)
+  },
+
+  /** 删除评论 */
+  delete(commentId: string) {
+    return request.delete(`/api/v1/comments/${commentId}`)
+  },
+}

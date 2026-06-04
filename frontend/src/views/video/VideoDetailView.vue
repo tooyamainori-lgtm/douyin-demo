@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { videoApi, type VideoInfo } from '@/api/video'
+import { videoApi, commentApi, type VideoInfo, type CommentInfo } from '@/api/video'
 import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
@@ -14,10 +14,17 @@ const loading = ref(true)
 const likeLoading = ref(false)
 const hasRecordedView = ref(false)
 
+// 评论
+const comments = ref<CommentInfo[]>([])
+const commentText = ref('')
+const replyTo = ref<{ id: string; nickname: string } | null>(null)
+const commentLoading = ref(false)
+
 onMounted(async () => {
   const id = route.params.id as string
   try {
     video.value = await videoApi.getDetail(id)
+    fetchComments()
   } catch {
     ElMessage.error('视频不存在')
     router.push('/')
@@ -25,6 +32,60 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+/** 获取评论列表 */
+async function fetchComments() {
+  if (!video.value) return
+  try {
+    comments.value = await commentApi.list(video.value.id)
+  } catch { /* ignore */ }
+}
+
+/** 发表评论 / 回复 */
+async function sendComment() {
+  if (!commentText.value.trim() || !video.value) return
+  if (!userStore.isLogin) {
+    ElMessage.warning('请先登录')
+    router.push('/login')
+    return
+  }
+  commentLoading.value = true
+  try {
+    await commentApi.publish(video.value.id, {
+      videoId: video.value.id,
+      content: commentText.value.trim(),
+      parentId: replyTo.value?.id,
+      replyUserId: replyTo.value?.id,
+    })
+    commentText.value = ''
+    replyTo.value = null
+    ElMessage.success('评论成功')
+    fetchComments()
+  } finally {
+    commentLoading.value = false
+  }
+}
+
+/** 回复评论 */
+function startReply(comment: CommentInfo) {
+  replyTo.value = { id: comment.id, nickname: comment.user.nickname }
+  commentText.value = ''
+}
+
+/** 取消回复 */
+function cancelReply() {
+  replyTo.value = null
+  commentText.value = ''
+}
+
+/** 删除评论 */
+async function deleteComment(commentId: string) {
+  try {
+    await commentApi.delete(commentId)
+    ElMessage.success('已删除')
+    fetchComments()
+  } catch { /* ignore */ }
+}
 
 /** 视频开始播放时统计播放量（首次） */
 function onVideoPlay() {
@@ -136,6 +197,76 @@ function formatTime(time: string): string {
             {{ tag }}
           </el-tag>
         </div>
+
+        <!-- 评论区 -->
+        <div class="comment-section">
+          <h3>评论 ({{ comments.length }})</h3>
+
+          <!-- 评论输入框 -->
+          <div class="comment-input">
+            <p v-if="replyTo" class="reply-hint">
+              回复 <strong>{{ replyTo.nickname }}</strong>
+              <el-button type="danger" link size="small" @click="cancelReply">取消</el-button>
+            </p>
+            <el-input
+              v-model="commentText"
+              :placeholder="replyTo ? `回复 ${replyTo.nickname}...` : '发表评论'"
+              maxlength="500"
+              show-word-limit
+              type="textarea"
+              :rows="2"
+            />
+            <el-button
+              type="primary"
+              size="small"
+              style="margin-top: 8px"
+              :loading="commentLoading"
+              @click="sendComment"
+            >
+              {{ replyTo ? '回复' : '发表' }}
+            </el-button>
+          </div>
+
+          <!-- 评论列表 -->
+          <div class="comment-list" v-if="comments.length > 0">
+            <div v-for="c in comments" :key="c.id" class="comment-item">
+              <div class="comment-avatar">{{ c.user.nickname?.charAt(0) || '?' }}</div>
+              <div class="comment-body">
+                <div class="comment-header">
+                  <span class="comment-nickname">{{ c.user.nickname }}</span>
+                  <span class="comment-time">{{ c.createTime?.slice(0, 10) }}</span>
+                </div>
+                <p class="comment-content">{{ c.content }}</p>
+                <div class="comment-actions">
+                  <el-button type="primary" link size="small" @click="startReply(c)">回复</el-button>
+                  <el-button
+                    v-if="userStore.user?.id === c.user.id"
+                    type="danger"
+                    link
+                    size="small"
+                    @click="deleteComment(c.id)"
+                  >
+                    删除
+                  </el-button>
+                </div>
+
+                <!-- 回复列表 -->
+                <div class="replies" v-if="c.replies?.length">
+                  <div v-for="r in c.replies" :key="r.id" class="reply-item">
+                    <span class="reply-avatar">{{ r.user.nickname?.charAt(0) || '?' }}</span>
+                    <div>
+                      <span class="reply-nickname">{{ r.user.nickname }}</span>
+                      <span v-if="r.replyNickname" class="reply-to"> 回复 @{{ r.replyNickname }}</span>
+                      ：{{ r.content }}
+                      <span class="reply-time">{{ r.createTime?.slice(0, 10) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p v-else class="no-comment">暂无评论，来发表第一条评论吧</p>
+        </div>
       </div>
     </template>
   </div>
@@ -209,5 +340,128 @@ function formatTime(time: string): string {
 .tags {
   padding-top: 12px;
   border-top: 1px solid #f0f0f0;
+}
+
+.comment-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.comment-section h3 {
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.comment-input {
+  margin-bottom: 20px;
+}
+
+.reply-hint {
+  font-size: 13px;
+  color: #909399;
+  margin-bottom: 4px;
+}
+
+.comment-item {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.comment-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fe2c55, #25f4ee);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-header {
+  margin-bottom: 4px;
+}
+
+.comment-nickname {
+  font-size: 13px;
+  font-weight: 500;
+  color: #303133;
+  margin-right: 8px;
+}
+
+.comment-time {
+  font-size: 12px;
+  color: #c0c4cc;
+}
+
+.comment-content {
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 4px;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.replies {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 6px;
+}
+
+.reply-item {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: #606266;
+}
+
+.reply-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fe2c55, #25f4ee);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.reply-nickname {
+  color: #409eff;
+  font-weight: 500;
+}
+
+.reply-to {
+  color: #909399;
+}
+
+.reply-time {
+  font-size: 11px;
+  color: #c0c4cc;
+  margin-left: 8px;
+}
+
+.no-comment {
+  text-align: center;
+  color: #c0c4cc;
+  padding: 40px 0;
 }
 </style>
