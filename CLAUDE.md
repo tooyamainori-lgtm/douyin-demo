@@ -7,6 +7,32 @@
 
 ---
 
+## MVP 功能范围
+
+### 用户模块
+- 注册 — `POST /api/v1/users/register`
+- 登录 — `POST /api/v1/users/login`
+- JWT 鉴权 — 请求头 `Authorization: Bearer <token>`
+- 个人主页 — `GET /api/v1/users/{id}`
+
+### 视频模块
+- 上传视频 — `POST /api/v1/videos`
+- 视频列表（信息流） — `GET /api/v1/videos`
+- 视频详情 — `GET /api/v1/videos/{id}`
+
+### 互动模块
+- 点赞 / 取消点赞 — `POST|DELETE /api/v1/videos/{videoId}/like`
+- 评论列表 — `GET /api/v1/videos/{videoId}/comments`
+- 发表评论 — `POST /api/v1/videos/{videoId}/comments`
+
+### 搜索模块
+- 搜索视频 — `GET /api/v1/videos?keyword=xxx`
+
+### 暂不实现
+直播、私信、推荐算法、商城
+
+---
+
 ## 技术栈
 
 ### 后端
