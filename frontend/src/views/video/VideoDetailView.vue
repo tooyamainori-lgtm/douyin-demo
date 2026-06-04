@@ -24,7 +24,7 @@ onMounted(async () => {
   const id = route.params.id as string
   try {
     video.value = await videoApi.getDetail(id)
-    fetchComments()
+    await fetchComments()
   } catch {
     ElMessage.error('视频不存在')
     router.push('/')
@@ -38,7 +38,7 @@ async function fetchComments() {
   if (!video.value) return
   try {
     comments.value = await commentApi.list(video.value.id)
-  } catch { /* ignore */ }
+  } catch (e) { console.error('获取评论失败', e) }
 }
 
 /** 发表评论 / 回复 */
@@ -60,7 +60,7 @@ async function sendComment() {
     commentText.value = ''
     replyTo.value = null
     ElMessage.success('评论成功')
-    fetchComments()
+    await fetchComments()
   } finally {
     commentLoading.value = false
   }
@@ -83,8 +83,8 @@ async function deleteComment(commentId: string) {
   try {
     await commentApi.delete(commentId)
     ElMessage.success('已删除')
-    fetchComments()
-  } catch { /* ignore */ }
+    await fetchComments()
+  } catch (e) { console.error('获取评论失败', e) }
 }
 
 /** 视频开始播放时统计播放量（首次） */
