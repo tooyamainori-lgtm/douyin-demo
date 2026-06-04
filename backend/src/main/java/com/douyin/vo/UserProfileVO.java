@@ -36,4 +36,7 @@ public class UserProfileVO {
 
     /** 获赞数 */
     private Long likeCount;
+
+    /** 注册时间 */
+    private String createTime;
 }

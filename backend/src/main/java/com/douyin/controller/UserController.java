@@ -45,13 +45,16 @@ public class UserController {
     }
 
     /**
-     * 获取当前登录用户信息
+     * 获取当前登录用户信息（需携带 JWT Token）
      *
-     * @param userId 从 JWT 中解析的用户ID
+     * @param userId 从 JWT 中解析的用户ID（未登录时为 null）
      * @return 用户信息
      */
     @GetMapping("/me")
-    public Result<UserVO> getCurrentUser(@RequestAttribute("userId") Long userId) {
+    public Result<UserVO> getCurrentUser(@RequestAttribute(value = "userId", required = false) Long userId) {
+        if (userId == null) {
+            return Result.fail(401, "请先登录");
+        }
         UserVO vo = userService.getCurrentUser(userId);
         return Result.ok(vo);
     }

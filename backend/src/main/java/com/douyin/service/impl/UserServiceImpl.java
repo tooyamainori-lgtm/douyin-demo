@@ -127,6 +127,7 @@ public class UserServiceImpl implements UserService {
                 .fansCount(0L)
                 .videoCount(0L)
                 .likeCount(0L)
+                .createTime(user.getCreateTime() != null ? user.getCreateTime().toString() : null)
                 .build();
     }
 }
