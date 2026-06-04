@@ -252,24 +252,41 @@ function formatTime(time: string): string {
 
                 <!-- 回复列表 -->
                 <div class="replies" v-if="c.replies?.length">
-                  <div v-for="r in c.replies" :key="r.id" class="reply-item">
-                    <span class="reply-avatar">{{ r.user.nickname?.charAt(0) || '?' }}</span>
-                    <div class="reply-content">
-                      <span class="reply-nickname">{{ r.user.nickname }}</span>
-                      <span v-if="r.replyNickname" class="reply-to"> 回复 @{{ r.replyNickname }}</span>
-                      ：{{ r.content }}
-                      <div class="reply-meta">
-                        <span class="reply-time">{{ r.createTime?.slice(0, 10) }}</span>
-                        <el-button type="primary" link size="small" @click="startReply(r)">回复</el-button>
-                        <el-button
-                          v-if="userStore.user?.id === r.user.id"
-                          type="danger"
-                          link
-                          size="small"
-                          @click="deleteComment(r.id)"
-                        >
-                          删除
-                        </el-button>
+                  <div v-for="r in c.replies" :key="r.id">
+                    <div class="reply-item">
+                      <span class="reply-avatar">{{ r.user.nickname?.charAt(0) || '?' }}</span>
+                      <div class="reply-content">
+                        <span class="reply-nickname">{{ r.user.nickname }}</span>
+                        <span v-if="r.replyNickname" class="reply-to"> 回复 @{{ r.replyNickname }}</span>
+                        ：{{ r.content }}
+                        <div class="reply-meta">
+                          <span class="reply-time">{{ r.createTime?.slice(0, 10) }}</span>
+                          <el-button type="primary" link size="small" @click="startReply(r)">回复</el-button>
+                          <el-button
+                            v-if="userStore.user?.id === r.user.id"
+                            type="danger"
+                            link
+                            size="small"
+                            @click="deleteComment(r.id)"
+                          >
+                            删除
+                          </el-button>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- 二级回复 -->
+                    <div class="sub-replies" v-if="r.replies?.length">
+                      <div v-for="sr in r.replies" :key="sr.id" class="reply-item sub-reply">
+                        <span class="reply-avatar sub-avatar">{{ sr.user.nickname?.charAt(0) || '?' }}</span>
+                        <div class="reply-content">
+                          <span class="reply-nickname">{{ sr.user.nickname }}</span>
+                          <span v-if="sr.replyNickname" class="reply-to"> 回复 @{{ sr.replyNickname }}</span>
+                          ：{{ sr.content }}
+                          <div class="reply-meta">
+                            <span class="reply-time">{{ sr.createTime?.slice(0, 10) }}</span>
+                            <el-button type="primary" link size="small" @click="startReply(sr)">回复</el-button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -452,6 +469,23 @@ function formatTime(time: string): string {
   gap: 8px;
   align-items: center;
   margin-top: 2px;
+}
+
+.sub-replies {
+  margin-left: 44px;
+  padding: 4px 0 4px 12px;
+  border-left: 2px solid #e4e7ed;
+}
+
+.sub-avatar {
+  width: 20px !important;
+  height: 20px !important;
+  font-size: 10px !important;
+}
+
+.sub-reply {
+  padding: 2px 0;
+  font-size: 12px;
 }
 
 .reply-avatar {

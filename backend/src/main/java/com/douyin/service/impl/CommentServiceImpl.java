@@ -79,18 +79,25 @@ public class CommentServiceImpl implements CommentService {
                 .filter(c -> c.getParentId() != null)
                 .collect(Collectors.groupingBy(Comment::getParentId));
 
-        // 构建评论树（只做一层回复）
+        // 构建评论树（二级回复：根 → 回复 → 对回复的回复）
         return rootComments.stream()
-                .map(root -> {
-                    CommentVO rootVO = buildCommentVO(root, root.getUserId());
-                    List<Comment> replies = repliesMap.getOrDefault(root.getId(), Collections.emptyList());
-                    List<CommentVO> replyVOs = replies.stream()
-                            .map(r -> buildCommentVO(r, r.getUserId()))
-                            .collect(Collectors.toList());
-                    rootVO.setReplies(replyVOs);
-                    return rootVO;
-                })
+                .map(root -> buildReplyTree(root, repliesMap))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 递归构建回复树
+     */
+    private CommentVO buildReplyTree(Comment comment, Map<Long, List<Comment>> repliesMap) {
+        CommentVO vo = buildCommentVO(comment, comment.getUserId());
+        List<Comment> children = repliesMap.getOrDefault(comment.getId(), Collections.emptyList());
+        if (!children.isEmpty()) {
+            List<CommentVO> childVOs = children.stream()
+                    .map(child -> buildReplyTree(child, repliesMap))
+                    .collect(Collectors.toList());
+            vo.setReplies(childVOs);
+        }
+        return vo;
     }
 
     @Override
