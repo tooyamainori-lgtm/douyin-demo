@@ -61,7 +61,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/register", "/api/v1/users/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/videos/**").permitAll()
                         .requestMatchers("/api/v1/videos/*/view").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/videos/**/comments").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/videos/*/comments").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/**").permitAll()
                         // 其余接口需要认证
                         .anyRequest().authenticated()

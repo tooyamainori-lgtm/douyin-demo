@@ -17,7 +17,7 @@ const hasRecordedView = ref(false)
 // 评论
 const comments = ref<CommentInfo[]>([])
 const commentText = ref('')
-const replyTo = ref<{ id: string; nickname: string } | null>(null)
+const replyTo = ref<{ id: string; userId: string; nickname: string } | null>(null)
 const commentLoading = ref(false)
 
 onMounted(async () => {
@@ -55,7 +55,7 @@ async function sendComment() {
       videoId: video.value.id,
       content: commentText.value.trim(),
       parentId: replyTo.value?.id,
-      replyUserId: replyTo.value?.id,
+      replyUserId: replyTo.value?.userId,
     })
     commentText.value = ''
     replyTo.value = null
@@ -68,7 +68,7 @@ async function sendComment() {
 
 /** 回复评论 */
 function startReply(comment: CommentInfo) {
-  replyTo.value = { id: comment.id, nickname: comment.user.nickname }
+  replyTo.value = { id: comment.id, userId: comment.user.id, nickname: comment.user.nickname }
   commentText.value = ''
 }
 
@@ -254,11 +254,23 @@ function formatTime(time: string): string {
                 <div class="replies" v-if="c.replies?.length">
                   <div v-for="r in c.replies" :key="r.id" class="reply-item">
                     <span class="reply-avatar">{{ r.user.nickname?.charAt(0) || '?' }}</span>
-                    <div>
+                    <div class="reply-content">
                       <span class="reply-nickname">{{ r.user.nickname }}</span>
                       <span v-if="r.replyNickname" class="reply-to"> 回复 @{{ r.replyNickname }}</span>
                       ：{{ r.content }}
-                      <span class="reply-time">{{ r.createTime?.slice(0, 10) }}</span>
+                      <div class="reply-meta">
+                        <span class="reply-time">{{ r.createTime?.slice(0, 10) }}</span>
+                        <el-button type="primary" link size="small" @click="startReply(r)">回复</el-button>
+                        <el-button
+                          v-if="userStore.user?.id === r.user.id"
+                          type="danger"
+                          link
+                          size="small"
+                          @click="deleteComment(r.id)"
+                        >
+                          删除
+                        </el-button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -429,6 +441,17 @@ function formatTime(time: string): string {
   padding: 4px 0;
   font-size: 13px;
   color: #606266;
+}
+
+.reply-content {
+  flex: 1;
+}
+
+.reply-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
 }
 
 .reply-avatar {
