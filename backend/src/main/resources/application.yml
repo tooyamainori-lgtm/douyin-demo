@@ -1,0 +1,66 @@
+# ============================================================
+# Douyin Web Demo — 应用配置
+# ============================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: douyin-backend
+
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/douyin?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 3000ms
+
+  # 文件上传大小限制
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+
+# MyBatis Plus 配置
+mybatis-plus:
+  # 实体类所在的包
+  type-aliases-package: com.douyin.entity
+  # 逻辑删除
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    # 下划线转驼峰
+    map-underscore-to-camel-case: true
+    # 日志
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath*:/mapper/**/*.xml
+
+# JWT 配置
+jwt:
+  secret: douyin-demo-jwt-secret-key-2026-must-be-at-least-256-bits-long
+  expiration: 604800000  # 7天，单位毫秒
+
+# MinIO 配置
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: douyin
+
+# 日志
+logging:
+  level:
+    com.douyin: debug
