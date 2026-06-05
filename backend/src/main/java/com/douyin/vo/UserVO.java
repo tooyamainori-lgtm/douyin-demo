@@ -22,6 +22,15 @@ public class UserVO {
     /** 头像URL */
     private String avatarUrl;
 
+    /** 个人简介 */
+    private String bio;
+
+    /** 性别 */
+    private Integer gender;
+
+    /** 生日 */
+    private String birthday;
+
     /** JWT Token（仅登录/注册时返回） */
     private String token;
 }

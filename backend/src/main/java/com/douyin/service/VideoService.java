@@ -84,6 +84,16 @@ public interface VideoService {
     void delete(Long videoId, Long userId);
 
     /**
+     * 我点赞的视频列表
+     *
+     * @param userId 用户ID
+     * @param page   页码
+     * @param size   每页条数
+     * @return 分页结果
+     */
+    PageResult<VideoVO> getMyLikes(Long userId, Integer page, Integer size);
+
+    /**
      * 获取热门视频排行榜
      *
      * @param top 前 N 名

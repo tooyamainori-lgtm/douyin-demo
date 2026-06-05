@@ -48,6 +48,7 @@ function handleLogout() {
     <div class="navbar-user">
       <template v-if="userStore.isLogin && userStore.user">
         <router-link to="/upload" class="nav-link upload-link">📹 上传</router-link>
+        <router-link to="/notifications" class="nav-link">消息</router-link>
         <router-link to="/favorites" class="nav-link">收藏</router-link>
         <router-link :to="`/user/${userStore.user.id}`" class="user-info">
           <span class="nickname">{{ userStore.user.nickname }}</span>

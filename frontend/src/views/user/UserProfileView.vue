@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { userApi, type UserProfile } from '@/api/user'
+import { userApi, followApi, type UserProfile } from '@/api/user'
 import { videoApi, type VideoInfo } from '@/api/video'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -11,9 +14,9 @@ const profile = ref<UserProfile | null>(null)
 const videos = ref<VideoInfo[]>([])
 const loading = ref(true)
 
-onMounted(async () => {
+async function loadProfile(userId: string) {
+  loading.value = true
   try {
-    const userId = route.params.id as string
     profile.value = await userApi.getUserProfile(userId)
     await fetchVideos(userId)
   } catch {
@@ -21,6 +24,13 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(() => loadProfile(route.params.id as string))
+
+// 路由参数变化时重新加载（解决同组件切换不刷新的问题）
+watch(() => route.params.id, (newId) => {
+  if (newId) loadProfile(newId as string)
 })
 
 async function fetchVideos(userId: string) {
@@ -35,6 +45,35 @@ function goToDetail(id: string) {
   router.push(`/video/${id}`)
 }
 
+const followLoading = ref(false)
+
+async function toggleFollow() {
+  if (!userStore.isLogin) {
+    ElMessage.warning('请先登录')
+    router.push('/login')
+    return
+  }
+  if (!profile.value) return
+  followLoading.value = true
+  try {
+    if (profile.value.isFollowing) {
+      await followApi.unfollow(profile.value.id)
+      profile.value.isFollowing = false
+      profile.value.fansCount--
+      ElMessage.success('已取消关注')
+    } else {
+      await followApi.follow(profile.value.id)
+      profile.value.isFollowing = true
+      profile.value.fansCount++
+      ElMessage.success('关注成功')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '操作失败')
+  } finally {
+    followLoading.value = false
+  }
+}
+
 function formatCount(n: number) {
   if (n >= 10000) return (n / 10000).toFixed(1) + '万'
   return String(n)
@@ -46,20 +85,31 @@ function formatCount(n: number) {
     <div class="profile-card" v-loading="loading">
       <div class="avatar-section">
         <div class="avatar">
-          {{ profile?.nickname?.charAt(0) || '?' }}
+          <img v-if="profile?.avatarUrl" :src="profile.avatarUrl" class="avatar-img" />
+          <span v-else class="avatar-text">{{ profile?.nickname?.charAt(0) || '?' }}</span>
         </div>
       </div>
       <h2 class="nickname">{{ profile?.nickname || '未知用户' }}</h2>
       <p class="username">@{{ profile?.username }}</p>
+      <el-button
+        v-if="userStore.isLogin && userStore.user?.id !== profile?.id"
+        :type="profile?.isFollowing ? 'default' : 'primary'"
+        :loading="followLoading"
+        size="small"
+        @click="toggleFollow"
+        class="follow-btn"
+      >
+        {{ profile?.isFollowing ? '已关注' : '+ 关注' }}
+      </el-button>
       <div class="stats">
-        <div class="stat-item">
+        <router-link :to="`/user/${profile?.id}/follows?tab=following`" class="stat-item">
           <span class="stat-value">{{ profile?.followCount || 0 }}</span>
           <span class="stat-label">关注</span>
-        </div>
-        <div class="stat-item">
+        </router-link>
+        <router-link :to="`/user/${profile?.id}/follows?tab=followers`" class="stat-item">
           <span class="stat-value">{{ profile?.fansCount || 0 }}</span>
           <span class="stat-label">粉丝</span>
-        </div>
+        </router-link>
         <div class="stat-item">
           <span class="stat-value">{{ profile?.videoCount || 0 }}</span>
           <span class="stat-label">视频</span>
@@ -70,6 +120,11 @@ function formatCount(n: number) {
         </div>
       </div>
       <p class="bio" v-if="profile?.bio">{{ profile.bio }}</p>
+      <router-link
+        v-if="userStore.isLogin && userStore.user?.id === profile?.id"
+        to="/profile/edit"
+        class="edit-link"
+      >编辑资料</router-link>
       <p class="create-time" v-if="profile?.createTime">
         {{ new Date(profile.createTime).toLocaleDateString('zh-CN') }} 加入
       </p>
@@ -130,6 +185,19 @@ function formatCount(n: number) {
   align-items: center;
   justify-content: center;
   margin: 0 auto;
+  overflow: hidden;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-text {
+  color: #fff;
+  font-size: 32px;
+  font-weight: bold;
 }
 
 .nickname {
@@ -153,6 +221,9 @@ function formatCount(n: number) {
 .stat-item {
   display: flex;
   flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 
 .stat-value {

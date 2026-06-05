@@ -84,6 +84,11 @@ export const videoApi = {
     return request.delete(`/api/v1/videos/${id}`)
   },
 
+  /** 我点赞的视频列表 */
+  getMyLikes(page: number, size: number) {
+    return request.get<any, PageResult<VideoInfo>>(`/api/v1/users/me/likes?page=${page}&size=${size}`)
+  },
+
   /** 热门排行榜 */
   getHot(top: number = 10) {
     return request.get<any, VideoInfo[]>(`/api/v1/videos/hot?top=${top}`)

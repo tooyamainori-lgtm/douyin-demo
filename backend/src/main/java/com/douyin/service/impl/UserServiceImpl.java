@@ -4,16 +4,25 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.douyin.common.exception.BusinessException;
 import com.douyin.dto.LoginDTO;
 import com.douyin.dto.RegisterDTO;
+import com.douyin.dto.UpdateProfileDTO;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.douyin.entity.User;
+import com.douyin.entity.Video;
 import com.douyin.mapper.UserMapper;
+import com.douyin.mapper.VideoMapper;
+import com.douyin.service.FollowService;
 import com.douyin.service.UserService;
 import com.douyin.util.JwtUtil;
+import com.douyin.util.MinioUtil;
 import com.douyin.vo.UserProfileVO;
 import com.douyin.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.time.LocalDate;
 
 /**
  * 用户服务实现
@@ -24,8 +33,11 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
+    private final VideoMapper videoMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final MinioUtil minioUtil;
+    private final FollowService followService;
 
     @Override
     public UserVO register(RegisterDTO dto) {
@@ -53,13 +65,7 @@ public class UserServiceImpl implements UserService {
         String token = jwtUtil.generateToken(user.getId());
 
         // 5. 组装返回
-        return UserVO.builder()
-                .id(user.getId().toString())
-                .username(user.getUsername())
-                .nickname(user.getNickname())
-                .avatarUrl(user.getAvatarUrl())
-                .token(token)
-                .build();
+        return buildUserVOWithToken(user, token);
     }
 
     @Override
@@ -86,13 +92,7 @@ public class UserServiceImpl implements UserService {
         log.info("用户登录：{}", user.getUsername());
 
         // 5. 组装返回
-        return UserVO.builder()
-                .id(user.getId().toString())
-                .username(user.getUsername())
-                .nickname(user.getNickname())
-                .avatarUrl(user.getAvatarUrl())
-                .token(token)
-                .build();
+        return buildUserVOWithToken(user, token);
     }
 
     @Override
@@ -101,33 +101,101 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new BusinessException(1002, "用户不存在");
         }
-        return UserVO.builder()
-                .id(user.getId().toString())
-                .username(user.getUsername())
-                .nickname(user.getNickname())
-                .avatarUrl(user.getAvatarUrl())
-                .token(null) // 获取信息时不返回 token
-                .build();
+        return buildUserVO(user);
     }
 
     @Override
-    public UserProfileVO getUserProfile(Long userId) {
+    public UserProfileVO getUserProfile(Long userId, Long currentUserId) {
         User user = userMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException(404, "用户不存在");
         }
-        // TODO: 查询关注数、粉丝数、视频数、获赞数（后续实现）
+        // 真实统计数据
+        long followCount = followService.countFollowing(userId);
+        long fansCount = followService.countFollowers(userId);
+        long videoCount = videoMapper.selectCount(
+                new LambdaQueryWrapper<Video>().eq(Video::getUserId, userId).eq(Video::getStatus, 1));
+        Long likeCount = videoMapper.getTotalLikesByUserId(userId);
+        boolean isFollowing = followService.isFollowing(currentUserId, userId);
+
         return UserProfileVO.builder()
                 .id(user.getId().toString())
                 .username(user.getUsername())
                 .nickname(user.getNickname())
                 .avatarUrl(user.getAvatarUrl())
                 .bio(user.getBio())
-                .followCount(0L)
-                .fansCount(0L)
-                .videoCount(0L)
-                .likeCount(0L)
+                .followCount(followCount)
+                .fansCount(fansCount)
+                .videoCount(videoCount)
+                .likeCount(likeCount != null ? likeCount : 0L)
+                .isFollowing(isFollowing)
                 .createTime(user.getCreateTime() != null ? user.getCreateTime().toString() : null)
+                .build();
+    }
+
+    @Override
+    public UserVO updateProfile(Long userId, UpdateProfileDTO dto) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(404, "用户不存在");
+        }
+        if (dto.getNickname() != null) {
+            user.setNickname(dto.getNickname());
+        }
+        if (dto.getBio() != null) {
+            user.setBio(dto.getBio());
+        }
+        if (dto.getGender() != null) {
+            user.setGender(dto.getGender());
+        }
+        if (dto.getBirthday() != null) {
+            user.setBirthday(LocalDate.parse(dto.getBirthday()));
+        }
+        userMapper.updateById(user);
+        return buildUserVO(user);
+    }
+
+    @Override
+    public String uploadAvatar(Long userId, MultipartFile file) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(404, "用户不存在");
+        }
+        try {
+            String objectName = minioUtil.uploadImage(file, "avatars");
+            String avatarUrl = minioUtil.getPublicUrl(objectName);
+            user.setAvatarUrl(avatarUrl);
+            userMapper.updateById(user);
+            log.info("用户 {} 头像更新成功：{}", userId, avatarUrl);
+            return avatarUrl;
+        } catch (Exception e) {
+            log.error("头像上传失败", e);
+            throw new BusinessException(2002, "上传失败，请重试");
+        }
+    }
+
+    private UserVO buildUserVO(User user) {
+        return UserVO.builder()
+                .id(user.getId().toString())
+                .username(user.getUsername())
+                .nickname(user.getNickname())
+                .avatarUrl(user.getAvatarUrl())
+                .bio(user.getBio())
+                .gender(user.getGender())
+                .birthday(user.getBirthday() != null ? user.getBirthday().toString() : null)
+                .build();
+    }
+
+    private UserVO buildUserVOWithToken(User user, String token) {
+        return UserVO.builder()
+                .id(user.getId().toString())
+                .username(user.getUsername())
+                .nickname(user.getNickname())
+                .avatarUrl(user.getAvatarUrl())
+                .bio(user.getBio())
+                .gender(user.getGender())
+                .birthday(user.getBirthday() != null ? user.getBirthday().toString() : null)
+                .token(token)
                 .build();
     }
 }

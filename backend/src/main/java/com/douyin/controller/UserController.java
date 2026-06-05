@@ -4,6 +4,7 @@ import com.douyin.common.PageResult;
 import com.douyin.common.Result;
 import com.douyin.dto.LoginDTO;
 import com.douyin.dto.RegisterDTO;
+import com.douyin.dto.UpdateProfileDTO;
 import com.douyin.service.UserService;
 import com.douyin.service.VideoService;
 import com.douyin.vo.UserProfileVO;
@@ -12,6 +13,7 @@ import com.douyin.vo.VideoVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 用户控制器
@@ -64,14 +66,28 @@ public class UserController {
     }
 
     /**
+     * 我点赞的视频列表
+     */
+    @GetMapping("/me/likes")
+    public Result<PageResult<VideoVO>> myLikes(
+            @RequestAttribute("userId") Long userId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        PageResult<VideoVO> result = videoService.getMyLikes(userId, page, size);
+        return Result.ok(result);
+    }
+
+    /**
      * 获取用户主页
      *
      * @param id 用户ID
      * @return 用户主页信息
      */
     @GetMapping("/{id}")
-    public Result<UserProfileVO> getUserProfile(@PathVariable Long id) {
-        UserProfileVO vo = userService.getUserProfile(id);
+    public Result<UserProfileVO> getUserProfile(
+            @PathVariable Long id,
+            @RequestAttribute(value = "userId", required = false) Long currentUserId) {
+        UserProfileVO vo = userService.getUserProfile(id, currentUserId);
         return Result.ok(vo);
     }
 
@@ -90,5 +106,35 @@ public class UserController {
             @RequestParam(defaultValue = "10") Integer size) {
         PageResult<VideoVO> result = videoService.getUserVideos(id, page, size);
         return Result.ok(result);
+    }
+
+    /**
+     * 更新个人资料
+     *
+     * @param dto    更新参数
+     * @param userId 当前用户ID
+     * @return 更新后的用户信息
+     */
+    @PutMapping("/me")
+    public Result<UserVO> updateProfile(
+            @RequestBody UpdateProfileDTO dto,
+            @RequestAttribute("userId") Long userId) {
+        UserVO vo = userService.updateProfile(userId, dto);
+        return Result.ok(vo);
+    }
+
+    /**
+     * 上传头像
+     *
+     * @param file   头像文件
+     * @param userId 当前用户ID
+     * @return 头像URL
+     */
+    @PostMapping("/me/avatar")
+    public Result<String> uploadAvatar(
+            @RequestParam("file") MultipartFile file,
+            @RequestAttribute("userId") Long userId) {
+        String url = userService.uploadAvatar(userId, file);
+        return Result.ok(url);
     }
 }

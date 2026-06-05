@@ -37,6 +37,9 @@ public class UserProfileVO {
     /** 获赞数 */
     private Long likeCount;
 
+    /** 是否已关注（当前登录用户视角） */
+    private Boolean isFollowing;
+
     /** 注册时间 */
     private String createTime;
 }

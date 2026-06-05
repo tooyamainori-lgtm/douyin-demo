@@ -34,6 +34,21 @@ const router = createRouter({
       component: () => import('@/views/upload/UploadView.vue'),
     },
     {
+      path: '/profile/edit',
+      name: 'profile-edit',
+      component: () => import('@/views/user/EditProfileView.vue'),
+    },
+    {
+      path: '/user/:id/follows',
+      name: 'follow-list',
+      component: () => import('@/views/user/FollowListView.vue'),
+    },
+    {
+      path: '/notifications',
+      name: 'notifications',
+      component: () => import('@/views/notification/NotificationView.vue'),
+    },
+    {
       path: '/favorites',
       name: 'favorites',
       component: () => import('@/views/favorites/FavoritesView.vue'),

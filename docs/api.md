@@ -22,6 +22,8 @@
 - [用户模块](#用户模块)
 - [视频模块](#视频模块)
 - [互动模块](#互动模块)
+- [关注模块](#关注模块)
+- [消息通知](#消息通知)
 - [搜索模块](#搜索模块)
 - [错误码说明](#错误码说明)
 
@@ -116,6 +118,48 @@ Authorization: Bearer <token>
     "videoCount": 12,
     "likeCount": 999
   }
+}
+```
+
+---
+
+### 更新个人资料
+
+```
+PUT /api/v1/users/me
+Authorization: Bearer <token>
+```
+
+**请求体**
+```json
+{
+  "nickname": "string, 选填",
+  "bio": "string, 选填",
+  "gender": "integer, 选填, 0-未知 1-男 2-女",
+  "birthday": "string, 选填, 格式 YYYY-MM-DD"
+}
+```
+
+---
+
+### 上传头像
+
+```
+POST /api/v1/users/me/avatar
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+```
+
+**请求参数**
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| file | File | 是 | 图片文件 |
+
+**响应**
+```json
+{
+  "code": 200,
+  "data": "http://localhost:9000/douyin/avatars/xxx.png"
 }
 ```
 
@@ -279,6 +323,24 @@ GET /api/v1/videos/{id}
 
 ---
 
+### 删除视频
+
+```
+DELETE /api/v1/videos/{id}
+Authorization: Bearer <token>
+```
+
+> 仅作者可删，同时清除 MinIO 文件。
+
+### 我点赞的视频
+
+```
+GET /api/v1/users/me/likes?page=1&size=10
+Authorization: Bearer <token>
+```
+
+---
+
 ## 互动模块
 
 ### 点赞视频
@@ -387,6 +449,67 @@ Authorization: Bearer <token>
 
 ---
 
+## 关注模块
+
+### 关注用户
+
+```
+POST /api/v1/follows/{userId}
+Authorization: Bearer <token>
+```
+
+### 取消关注
+
+```
+DELETE /api/v1/follows/{userId}
+Authorization: Bearer <token>
+```
+
+### 是否已关注
+
+```
+GET /api/v1/follows/{userId}/status
+```
+
+### 关注列表
+
+```
+GET /api/v1/users/{userId}/following
+```
+
+### 粉丝列表
+
+```
+GET /api/v1/users/{userId}/followers
+```
+
+---
+
+## 消息通知
+
+### 通知列表
+
+```
+GET /api/v1/notifications?page=1&size=20
+Authorization: Bearer <token>
+```
+
+### 未读数量
+
+```
+GET /api/v1/notifications/unread-count
+Authorization: Bearer <token>
+```
+
+### 全部已读
+
+```
+PUT /api/v1/notifications/read
+Authorization: Bearer <token>
+```
+
+---
+
 ## 搜索模块
 
 ### 搜索视频
@@ -454,3 +577,5 @@ GET /api/v1/videos?keyword=xxx&page=1&size=10
 | 2002 | 上传失败 |
 | 3001 | 评论不存在 |
 | 3002 | 已经点过赞了 |
+| 3003 | 已经关注过了 |
+| 3004 | 未关注该用户 |

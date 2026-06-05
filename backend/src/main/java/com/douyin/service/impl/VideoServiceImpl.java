@@ -13,6 +13,7 @@ import com.douyin.mapper.VideoFavoriteMapper;
 import com.douyin.mapper.UserMapper;
 import com.douyin.mapper.VideoMapper;
 import com.douyin.service.VideoService;
+import com.douyin.service.NotificationService;
 import com.douyin.util.MinioUtil;
 import com.douyin.util.RedisUtil;
 import com.douyin.vo.VideoAuthorVO;
@@ -41,6 +42,7 @@ public class VideoServiceImpl implements VideoService {
     private final VideoFavoriteMapper favoriteMapper;
     private final RedisUtil redisUtil;
     private final MinioUtil minioUtil;
+    private final NotificationService notificationService;
 
     @Override
     public VideoVO upload(MultipartFile file, String title, String description, String tags, Long userId) {
@@ -168,6 +170,8 @@ public class VideoServiceImpl implements VideoService {
             videoMapper.updateById(video);
             // 更新热门排行榜：点赞 +3
             redisUtil.addHotScore(videoId, 3);
+            // 通知视频作者
+            notificationService.create(video.getUserId(), userId, "like", videoId, "点赞了你的视频");
         }
     }
 
@@ -224,6 +228,28 @@ public class VideoServiceImpl implements VideoService {
         // 逻辑删除数据库记录
         videoMapper.deleteById(videoId);
         log.info("视频已删除：videoId={}, userId={}", videoId, userId);
+    }
+
+    @Override
+    public PageResult<VideoVO> getMyLikes(Long userId, Integer page, Integer size) {
+        // 分页查询点赞记录
+        Page<LikeRecord> mpPage = new Page<>(page, size);
+        Page<LikeRecord> likePage = likeRecordMapper.selectPage(mpPage,
+                new LambdaQueryWrapper<LikeRecord>()
+                        .eq(LikeRecord::getUserId, userId)
+                        .orderByDesc(LikeRecord::getCreateTime));
+
+        List<VideoVO> records = likePage.getRecords().stream()
+                .map(lr -> {
+                    Video video = videoMapper.selectById(lr.getVideoId());
+                    if (video == null || video.getStatus() == 0) return null;
+                    User author = userMapper.selectById(video.getUserId());
+                    return buildVideoVO(video, author, true);
+                })
+                .filter(v -> v != null)
+                .collect(Collectors.toList());
+
+        return PageResult.of(likePage.getTotal(), likePage.getCurrent(), likePage.getSize(), records);
     }
 
     @Override

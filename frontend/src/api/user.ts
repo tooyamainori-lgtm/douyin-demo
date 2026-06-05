@@ -20,6 +20,9 @@ export interface UserInfo {
   username: string
   nickname: string
   avatarUrl: string | null
+  bio: string | null
+  gender: number | null
+  birthday: string | null
   token?: string
 }
 
@@ -34,12 +37,21 @@ export interface UserProfile {
   fansCount: number
   videoCount: number
   likeCount: number
+  isFollowing: boolean
   createTime: string | null
 }
 
 /**
  * 用户 API
  */
+/** 更新资料参数 */
+export interface UpdateProfileParams {
+  nickname?: string
+  bio?: string
+  gender?: number
+  birthday?: string
+}
+
 export const userApi = {
   /** 注册 */
   register(data: RegisterParams) {
@@ -59,5 +71,40 @@ export const userApi = {
   /** 获取用户主页 */
   getUserProfile(userId: string) {
     return request.get<any, UserProfile>(`/api/v1/users/${userId}`)
+  },
+
+  /** 更新个人资料 */
+  updateProfile(data: UpdateProfileParams) {
+    return request.put<any, UserInfo>('/api/v1/users/me', data)
+  },
+
+  /** 上传头像 */
+  uploadAvatar(data: FormData) {
+    return request.post<any, string>('/api/v1/users/me/avatar', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  /** 获取关注列表 */
+  getFollowing(userId: string) {
+    return request.get<any, UserInfo[]>(`/api/v1/users/${userId}/following`)
+  },
+
+  /** 获取粉丝列表 */
+  getFollowers(userId: string) {
+    return request.get<any, UserInfo[]>(`/api/v1/users/${userId}/followers`)
+  },
+}
+
+/** 关注 API */
+export const followApi = {
+  follow(userId: string) {
+    return request.post(`/api/v1/follows/${userId}`)
+  },
+  unfollow(userId: string) {
+    return request.delete(`/api/v1/follows/${userId}`)
+  },
+  isFollowing(userId: string) {
+    return request.get<any, boolean>(`/api/v1/follows/${userId}/status`)
   },
 }

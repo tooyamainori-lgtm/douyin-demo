@@ -124,3 +124,18 @@ CREATE TABLE `comment` (
     KEY `idx_comment_user_id` (`user_id`),
     KEY `idx_comment_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论表';
+
+-- 消息通知表
+CREATE TABLE `notification` (
+    `id`          BIGINT       NOT NULL COMMENT '主键ID',
+    `user_id`     BIGINT       NOT NULL COMMENT '接收通知的用户ID',
+    `from_user_id` BIGINT      NOT NULL COMMENT '触发通知的用户ID',
+    `type`        VARCHAR(20)  NOT NULL COMMENT '类型：like/comment/follow',
+    `video_id`    BIGINT       DEFAULT NULL COMMENT '关联视频ID',
+    `content`     VARCHAR(200) NOT NULL COMMENT '通知内容',
+    `is_read`     TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否已读：0-未读 1-已读',
+    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '通知时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_notification_user_id` (`user_id`),
+    KEY `idx_notification_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息通知表';
