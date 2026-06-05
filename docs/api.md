@@ -332,6 +332,19 @@ Authorization: Bearer <token>
 
 > 仅作者可删，同时清除 MinIO 文件。
 
+### 视频封面
+
+上传视频时附带可选 `cover` 参数（图片文件），不传封面时 FFmpeg 自动截取第 0.5 秒帧。
+
+### 批量补封面
+
+```
+POST /api/v1/videos/admin/generate-covers
+Authorization: Bearer <token>
+```
+
+> 为所有无封面的 MinIO 视频自动生成封面（FFmpeg 截帧）。
+
 ### 我点赞的视频
 
 ```

@@ -158,6 +158,7 @@ docker compose up -d
 | `minio.bucket` | 存储桶名称 | douyin |
 | `jwt.secret` | JWT 签名密钥 | — |
 | `jwt.expiration` | Token 过期时间(ms) | 604800000 (7天) |
+| `douyin.ffmpeg.path` | FFmpeg 路径 | D:/APP/ffmpeg/bin/ffmpeg.exe |
 
 ## API 文档
 
