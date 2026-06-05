@@ -56,6 +56,25 @@ public class MinioUtil {
     }
 
     /**
+     * 上传本地文件到 MinIO
+     *
+     * @param localPath  本地文件路径
+     * @param objectName MinIO 对象名称
+     * @param contentType MIME 类型
+     */
+    public void uploadFile(String localPath, String objectName, String contentType) throws Exception {
+        minioClient.uploadObject(
+                UploadObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(objectName)
+                        .filename(localPath)
+                        .contentType(contentType != null ? contentType : "application/octet-stream")
+                        .build()
+        );
+        log.info("文件已上传到 MinIO：{}", objectName);
+    }
+
+    /**
      * 上传图片文件到 MinIO
      *
      * @param file       图片文件

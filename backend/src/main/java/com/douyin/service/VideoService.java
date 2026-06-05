@@ -93,6 +93,9 @@ public interface VideoService {
      */
     PageResult<VideoVO> getMyLikes(Long userId, Integer page, Integer size);
 
+    /** 批量为无封面视频生成封面 */
+    int batchGenerateCovers();
+
     /**
      * 获取热门视频排行榜
      *

@@ -13,6 +13,9 @@ import com.douyin.mapper.VideoFavoriteMapper;
 import com.douyin.mapper.UserMapper;
 import com.douyin.mapper.VideoMapper;
 import com.douyin.service.VideoService;
+import io.minio.DownloadObjectArgs;
+import io.minio.MinioClient;
+
 import com.douyin.service.NotificationService;
 import com.douyin.util.MinioUtil;
 import com.douyin.util.RedisUtil;
@@ -20,12 +23,17 @@ import com.douyin.vo.VideoAuthorVO;
 import com.douyin.vo.VideoVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -44,6 +52,13 @@ public class VideoServiceImpl implements VideoService {
     private final MinioUtil minioUtil;
     private final NotificationService notificationService;
 
+    @Value("${douyin.ffmpeg.path:D:/APP/ffmpeg/bin/ffmpeg.exe}")
+    private String ffmpegPath;
+    @Value("${minio.bucket}")
+    private String minioBucket;
+
+    private final MinioClient minioClient;
+
     @Override
     public VideoVO upload(MultipartFile file, String title, String description, String tags, MultipartFile cover, Long userId) {
         // 1. 校验文件
@@ -55,31 +70,52 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException(400, "仅支持 MP4 格式");
         }
 
-        // 2. 上传文件到 MinIO
+        // 2. 保存视频到临时文件
+        String fileExt = ".mp4";
+        String tmpName = "douyin-upload-" + UUID.randomUUID().toString().replace("-", "") + fileExt;
+        Path tmpVideo = null;
         String objectName;
         try {
-            objectName = minioUtil.uploadVideo(file);
+            tmpVideo = Files.createTempFile("douyin-", fileExt);
+            file.transferTo(tmpVideo.toFile());
+        } catch (Exception e) {
+            log.error("视频临时保存失败", e);
+            throw new BusinessException(2002, "上传失败");
+        }
+
+        // 3. 上传视频到 MinIO
+        try {
+            objectName = "videos/" + UUID.randomUUID().toString().replace("-", "") + fileExt;
+            minioUtil.uploadFile(tmpVideo.toString(), objectName, "video/mp4");
+            log.info("视频已上传到 MinIO：{}", objectName);
         } catch (Exception e) {
             log.error("视频上传到 MinIO 失败", e);
             throw new BusinessException(2002, "上传失败，请重试");
         }
 
-        // 3. 构建视频实体
-        Video video = new Video();
-        video.setUserId(userId);
-        video.setTitle(title);
-        video.setDescription(description != null ? description : "");
-        video.setVideoUrl(minioUtil.getPublicUrl(objectName));
-        // 封面：用户上传 > 默认空
+        // 4. 封面：用户上传 > FFmpeg 自动截帧 > 默认空
         String coverUrl = "";
         if (cover != null && !cover.isEmpty()) {
             try {
                 String coverName = minioUtil.uploadImage(cover, "covers");
                 coverUrl = minioUtil.getPublicUrl(coverName);
             } catch (Exception e) {
-                log.warn("封面上传失败", e);
+                log.warn("用户封面上传失败", e);
             }
+        } else {
+            // FFmpeg 自动截帧
+            coverUrl = extractCover(tmpVideo.toString());
         }
+
+        // 5. 清理临时文件
+        try { Files.deleteIfExists(tmpVideo); } catch (Exception ignored) {}
+
+        // 6. 构建视频实体
+        Video video = new Video();
+        video.setUserId(userId);
+        video.setTitle(title);
+        video.setDescription(description != null ? description : "");
+        video.setVideoUrl(minioUtil.getPublicUrl(objectName));
         video.setCoverUrl(coverUrl);
         video.setDuration(java.math.BigDecimal.ZERO); // TODO: 后续用 FFmpeg 提取时长
         video.setWidth(0);
@@ -264,6 +300,43 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
+    public int batchGenerateCovers() {
+        List<Video> videos = videoMapper.selectWithoutCover();
+        int count = 0;
+        for (Video video : videos) {
+            String videoUrl = video.getVideoUrl();
+            if (videoUrl == null || !videoUrl.contains("/douyin/")) continue;
+            // 从 MinIO URL 提取 object name
+            String objectName = videoUrl.substring(videoUrl.indexOf("/douyin/") + "/douyin/".length());
+            // 下载到临时文件
+            Path tmpVideo = null;
+            try {
+                tmpVideo = Files.createTempFile("cover-", ".mp4");
+                Files.deleteIfExists(tmpVideo); // 确保干净
+                minioClient.downloadObject(
+                        DownloadObjectArgs.builder()
+                                .bucket(minioBucket)
+                                .object(objectName)
+                                .filename(tmpVideo.toString())
+                                .build());
+                // FFmpeg 截帧
+                String coverUrl = extractCover(tmpVideo.toString());
+                if (!coverUrl.isEmpty()) {
+                    video.setCoverUrl(coverUrl);
+                    videoMapper.updateById(video);
+                    count++;
+                    log.info("批量封面: videoId={} cover={}", video.getId(), coverUrl);
+                }
+            } catch (Exception e) {
+                log.warn("批量封面失败: videoId={}", video.getId(), e);
+            } finally {
+                if (tmpVideo != null) try { Files.deleteIfExists(tmpVideo); } catch (Exception ignored) {}
+            }
+        }
+        return count;
+    }
+
+    @Override
     public List<VideoVO> getHotRank(int top) {
         Map<Long, Double> hotMap = redisUtil.getHotRank(top);
         return hotMap.entrySet().stream()
@@ -282,6 +355,42 @@ public class VideoServiceImpl implements VideoService {
      */
     private VideoVO buildVideoVO(Video video, User author, boolean isLiked) {
         return buildVideoVO(video, author, isLiked, false);
+    }
+
+    /** FFmpeg 自动截取视频帧作为封面 */
+    private String extractCover(String videoPath) {
+        try {
+            Path coverTmp = Files.createTempFile("douyin-cover-", ".png");
+            ProcessBuilder pb = new ProcessBuilder(
+                    ffmpegPath,
+                    "-ss", "0.5",        // 提前 seek 更快，0.5s 兼容短视频
+                    "-i", videoPath,
+                    "-vframes", "1",
+                    "-update", "1",       // 单帧输出
+                    "-y",
+                    coverTmp.toString()
+            );
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            if (!p.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                Files.deleteIfExists(coverTmp);
+                log.warn("FFmpeg 超时");
+                return "";
+            }
+
+            if (coverTmp.toFile().length() > 0) {
+                String coverName = "covers/" + UUID.randomUUID().toString().replace("-", "") + ".png";
+                minioUtil.uploadFile(coverTmp.toString(), coverName, "image/png");
+                Files.deleteIfExists(coverTmp);
+                log.info("FFmpeg 自动封面生成成功：{}", coverName);
+                return minioUtil.getPublicUrl(coverName);
+            }
+            Files.deleteIfExists(coverTmp);
+        } catch (Exception e) {
+            log.warn("FFmpeg 自动封面失败", e);
+        }
+        return "";
     }
 
     private VideoVO buildVideoVO(Video video, User author, boolean isLiked, boolean isFavorited) {

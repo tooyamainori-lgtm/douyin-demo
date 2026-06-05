@@ -60,8 +60,10 @@ minio:
   secret-key: minioadmin
   bucket: douyin
 
-# 自定义配置（MinIO 存储，无需本地 upload 目录）
+# 自定义配置
 douyin:
+  ffmpeg:
+    path: D:/APP/ffmpeg/bin/ffmpeg.exe
 
 # 日志
 logging:

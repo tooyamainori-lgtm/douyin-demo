@@ -300,7 +300,10 @@ function formatTime(time: string): string {
           <!-- 评论列表 -->
           <div class="comment-list" v-if="comments.length > 0">
             <div v-for="c in comments" :key="c.id" class="comment-item">
-              <div class="comment-avatar">{{ c.user.nickname?.charAt(0) || '?' }}</div>
+              <div class="comment-avatar">
+                <img v-if="c.user.avatarUrl" :src="c.user.avatarUrl" class="comment-avatar-img" />
+                <span v-else class="comment-avatar-text">{{ c.user.nickname?.charAt(0) || '?' }}</span>
+              </div>
               <div class="comment-body">
                 <div class="comment-header">
                   <span class="comment-nickname">{{ c.user.nickname }}</span>
@@ -324,7 +327,10 @@ function formatTime(time: string): string {
                 <div class="replies" v-if="c.replies?.length">
                   <div v-for="r in c.replies" :key="r.id">
                     <div class="reply-item">
-                      <span class="reply-avatar">{{ r.user.nickname?.charAt(0) || '?' }}</span>
+                      <span class="reply-avatar">
+                        <img v-if="r.user.avatarUrl" :src="r.user.avatarUrl" class="reply-avatar-img" />
+                        <span v-else>{{ r.user.nickname?.charAt(0) || '?' }}</span>
+                      </span>
                       <div class="reply-content">
                         <span class="reply-nickname">{{ r.user.nickname }}</span>
                         <span v-if="r.replyNickname" class="reply-to"> 回复 @{{ r.replyNickname }}</span>
@@ -347,7 +353,10 @@ function formatTime(time: string): string {
                     <!-- 二级回复 -->
                     <div class="sub-replies" v-if="r.replies?.length">
                       <div v-for="sr in r.replies" :key="sr.id" class="reply-item sub-reply">
-                        <span class="reply-avatar sub-avatar">{{ sr.user.nickname?.charAt(0) || '?' }}</span>
+                        <span class="reply-avatar sub-avatar">
+                        <img v-if="sr.user.avatarUrl" :src="sr.user.avatarUrl" class="reply-avatar-img" />
+                        <span v-else>{{ sr.user.nickname?.charAt(0) || '?' }}</span>
+                      </span>
                         <div class="reply-content">
                           <span class="reply-nickname">{{ sr.user.nickname }}</span>
                           <span v-if="sr.replyNickname" class="reply-to"> 回复 @{{ sr.replyNickname }}</span>
@@ -473,14 +482,22 @@ function formatTime(time: string): string {
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
   background: linear-gradient(135deg, #fe2c55, #25f4ee);
-  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.comment-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.comment-avatar-text {
+  color: #fff;
   font-size: 14px;
   font-weight: bold;
-  flex-shrink: 0;
 }
 
 .comment-body {
@@ -562,13 +579,20 @@ function formatTime(time: string): string {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fe2c55, #25f4ee);
-  color: #fff;
+  overflow: hidden;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  flex-shrink: 0;
+  background: linear-gradient(135deg, #fe2c55, #25f4ee);
+  color: #fff;
+  font-size: 10px;
+}
+.reply-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .reply-nickname {

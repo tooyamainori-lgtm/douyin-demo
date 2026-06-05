@@ -140,7 +140,8 @@ function formatCount(n: number) {
             @click="goToDetail(v.id)"
           >
             <div class="mini-cover">
-              <div class="cover-placeholder">▶</div>
+              <img v-if="v.coverUrl" :src="v.coverUrl" class="mini-cover-img" alt="" />
+              <div v-else class="cover-placeholder">▶</div>
             </div>
             <div class="mini-info">
               <span class="mini-title">{{ v.title }}</span>
@@ -279,6 +280,12 @@ function formatCount(n: number) {
   justify-content: center;
   color: #fff;
   font-size: 20px;
+  overflow: hidden;
+}
+.mini-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .mini-info {

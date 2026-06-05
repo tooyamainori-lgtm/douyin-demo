@@ -131,6 +131,15 @@ public class VideoController {
     }
 
     /**
+     * 批量补封面：为所有无封面的视频自动生成封面（FEfmpg 截帧）
+     */
+    @PostMapping("/admin/generate-covers")
+    public Result<Integer> generateCovers() {
+        int count = videoService.batchGenerateCovers();
+        return Result.ok(count);
+    }
+
+    /**
      * 热门视频排行榜
      *
      * @param top 前 N 名（默认 10）
