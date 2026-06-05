@@ -72,6 +72,18 @@ export const videoApi = {
     return request.delete(`/api/v1/videos/${id}/like`)
   },
 
+  /** 上传视频 */
+  upload(data: FormData) {
+    return request.post<any, VideoInfo>('/api/v1/videos', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  /** 删除视频（仅作者） */
+  delete(id: string) {
+    return request.delete(`/api/v1/videos/${id}`)
+  },
+
   /** 热门排行榜 */
   getHot(top: number = 10) {
     return request.get<any, VideoInfo[]>(`/api/v1/videos/hot?top=${top}`)

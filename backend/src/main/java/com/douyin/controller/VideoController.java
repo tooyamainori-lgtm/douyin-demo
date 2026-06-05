@@ -115,6 +115,21 @@ public class VideoController {
     }
 
     /**
+     * 删除视频（仅作者可删）
+     *
+     * @param id     视频ID
+     * @param userId 当前用户ID
+     * @return 成功
+     */
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(
+            @PathVariable Long id,
+            @RequestAttribute("userId") Long userId) {
+        videoService.delete(id, userId);
+        return Result.ok();
+    }
+
+    /**
      * 热门视频排行榜
      *
      * @param top 前 N 名（默认 10）

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { videoApi, commentApi, favoriteApi, type VideoInfo, type CommentInfo } from '@/api/video'
 import { useUserStore } from '@/stores/user'
 
@@ -13,6 +13,7 @@ const video = ref<VideoInfo | null>(null)
 const loading = ref(true)
 const likeLoading = ref(false)
 const favLoading = ref(false)
+const deleteLoading = ref(false)
 const hasRecordedView = ref(false)
 
 // 评论
@@ -147,6 +148,31 @@ async function toggleFavorite() {
   }
 }
 
+/** 删除视频 */
+async function deleteVideo() {
+  if (!video.value) return
+  try {
+    await ElMessageBox.confirm('确定要删除这个视频吗？此操作不可撤销。', '确认删除', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return // 用户取消
+  }
+
+  deleteLoading.value = true
+  try {
+    await videoApi.delete(video.value.id)
+    ElMessage.success('已删除')
+    router.push('/')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '删除失败')
+  } finally {
+    deleteLoading.value = false
+  }
+}
+
 /** 格式化 */
 function formatCount(count: number): string {
   if (count >= 10000) return (count / 10000).toFixed(1) + '万'
@@ -204,6 +230,16 @@ function formatTime(time: string): string {
             @click="toggleFavorite"
           >
             {{ video.isFavorited ? '⭐ 已收藏' : '☆ 收藏' }}
+          </el-button>
+          <el-button
+            v-if="userStore.user?.id === video.author.id"
+            type="danger"
+            size="large"
+            :loading="deleteLoading"
+            @click="deleteVideo"
+            plain
+          >
+            🗑 删除
           </el-button>
         </div>
 

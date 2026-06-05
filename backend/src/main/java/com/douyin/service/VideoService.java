@@ -76,6 +76,14 @@ public interface VideoService {
     PageResult<VideoVO> getUserVideos(Long userId, Integer page, Integer size);
 
     /**
+     * 删除视频（仅作者可删）
+     *
+     * @param videoId 视频ID
+     * @param userId  操作者ID
+     */
+    void delete(Long videoId, Long userId);
+
+    /**
      * 获取热门视频排行榜
      *
      * @param top 前 N 名

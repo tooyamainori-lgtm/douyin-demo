@@ -1,28 +1,14 @@
 package com.douyin.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.nio.file.Paths;
-
 /**
- * Web MVC 配置 — 静态资源映射
+ * Web MVC 配置
+ * <p>
+ * 视频/图片等静态资源已迁移至 MinIO 对象存储，不再需要本地目录映射。
+ * </p>
  */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
-
-    @Value("${douyin.upload.path:uploads}")
-    private String uploadPath;
-
-    /**
-     * 将 uploads 目录映射为静态资源，供前端直接访问视频/图片文件
-     */
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String absolutePath = Paths.get(uploadPath).toAbsolutePath().toUri().toString();
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations(absolutePath);
-    }
 }

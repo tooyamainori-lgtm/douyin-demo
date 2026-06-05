@@ -13,24 +13,18 @@ import com.douyin.mapper.VideoFavoriteMapper;
 import com.douyin.mapper.UserMapper;
 import com.douyin.mapper.VideoMapper;
 import com.douyin.service.VideoService;
+import com.douyin.util.MinioUtil;
 import com.douyin.util.RedisUtil;
 import com.douyin.vo.VideoAuthorVO;
 import com.douyin.vo.VideoVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -46,9 +40,7 @@ public class VideoServiceImpl implements VideoService {
     private final LikeRecordMapper likeRecordMapper;
     private final VideoFavoriteMapper favoriteMapper;
     private final RedisUtil redisUtil;
-
-    @Value("${douyin.upload.path:uploads}")
-    private String uploadPath;
+    private final MinioUtil minioUtil;
 
     @Override
     public VideoVO upload(MultipartFile file, String title, String description, String tags, Long userId) {
@@ -61,17 +53,12 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException(400, "仅支持 MP4 格式");
         }
 
-        // 2. 保存文件到本地
-        String fileExt = ".mp4";
-        String fileName = UUID.randomUUID().toString().replace("-", "") + fileExt;
-        Path videoDir = Paths.get(uploadPath, "videos");
+        // 2. 上传文件到 MinIO
+        String objectName;
         try {
-            Files.createDirectories(videoDir);
-            Path targetPath = videoDir.resolve(fileName);
-            file.transferTo(targetPath.toFile());
-            log.info("视频文件已保存：{}", targetPath);
-        } catch (IOException e) {
-            log.error("视频保存失败", e);
+            objectName = minioUtil.uploadVideo(file);
+        } catch (Exception e) {
+            log.error("视频上传到 MinIO 失败", e);
             throw new BusinessException(2002, "上传失败，请重试");
         }
 
@@ -80,8 +67,7 @@ public class VideoServiceImpl implements VideoService {
         video.setUserId(userId);
         video.setTitle(title);
         video.setDescription(description != null ? description : "");
-        video.setVideoUrl("/uploads/videos/" + fileName);
-        video.setCoverUrl(""); // TODO: 后续用 FFmpeg 生成封面
+        video.setVideoUrl(minioUtil.getPublicUrl(objectName));
         video.setDuration(java.math.BigDecimal.ZERO); // TODO: 后续用 FFmpeg 提取时长
         video.setWidth(0);
         video.setHeight(0);
@@ -215,6 +201,29 @@ public class VideoServiceImpl implements VideoService {
                 .collect(Collectors.toList());
 
         return PageResult.of(result.getTotal(), result.getCurrent(), result.getSize(), records);
+    }
+
+    @Override
+    public void delete(Long videoId, Long userId) {
+        Video video = videoMapper.selectById(videoId);
+        if (video == null || video.getStatus() == 0) {
+            throw new BusinessException(2001, "视频不存在");
+        }
+        if (!video.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权删除他人视频");
+        }
+
+        // 从 MinIO 删除文件
+        String videoUrl = video.getVideoUrl();
+        if (videoUrl != null && videoUrl.contains("/douyin/")) {
+            int idx = videoUrl.indexOf("/douyin/") + "/douyin/".length();
+            String objectName = videoUrl.substring(idx);
+            minioUtil.delete(objectName);
+        }
+
+        // 逻辑删除数据库记录
+        videoMapper.deleteById(videoId);
+        log.info("视频已删除：videoId={}, userId={}", videoId, userId);
     }
 
     @Override

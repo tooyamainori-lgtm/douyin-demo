@@ -55,8 +55,6 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // 请求授权
                 .authorizeHttpRequests(auth -> auth
-                        // 静态资源公开访问
-                        .requestMatchers("/uploads/**").permitAll()
                         // 公开接口（无需登录）
                         .requestMatchers("/api/v1/users/register", "/api/v1/users/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/videos/**").permitAll()

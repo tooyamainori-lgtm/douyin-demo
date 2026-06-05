@@ -29,6 +29,11 @@ const router = createRouter({
       component: () => import('@/views/user/UserProfileView.vue'),
     },
     {
+      path: '/upload',
+      name: 'upload',
+      component: () => import('@/views/upload/UploadView.vue'),
+    },
+    {
       path: '/favorites',
       name: 'favorites',
       component: () => import('@/views/favorites/FavoritesView.vue'),

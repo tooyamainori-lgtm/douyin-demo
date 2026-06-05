@@ -60,10 +60,8 @@ minio:
   secret-key: minioadmin
   bucket: douyin
 
-# 自定义配置
+# 自定义配置（MinIO 存储，无需本地 upload 目录）
 douyin:
-  upload:
-    path: D:/Project/douyin-demo/uploads  # 文件上传目录（绝对路径）
 
 # 日志
 logging:
