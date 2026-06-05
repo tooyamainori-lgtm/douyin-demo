@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
 interface NotificationItem {
   id: string
@@ -17,7 +18,15 @@ const list = ref<NotificationItem[]>([])
 const loading = ref(true)
 const unread = ref(0)
 
-onMounted(() => fetchAll())
+const userStore = useUserStore()
+
+onMounted(fetchAll)
+
+// 用户切换时自动刷新通知
+watch(() => userStore.token, () => {
+  if (userStore.token) fetchAll()
+  else { list.value = []; unread.value = 0 }
+})
 
 async function fetchAll() {
   loading.value = true

@@ -60,7 +60,7 @@ export const useUserStore = defineStore(
   {
     persist: {
       key: 'douyin-user',
-      storage: localStorage,
+      storage: sessionStorage,
     },
   },
 )

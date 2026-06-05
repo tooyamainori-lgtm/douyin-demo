@@ -45,7 +45,7 @@ public class VideoServiceImpl implements VideoService {
     private final NotificationService notificationService;
 
     @Override
-    public VideoVO upload(MultipartFile file, String title, String description, String tags, Long userId) {
+    public VideoVO upload(MultipartFile file, String title, String description, String tags, MultipartFile cover, Long userId) {
         // 1. 校验文件
         if (file.isEmpty()) {
             throw new BusinessException(400, "请选择视频文件");
@@ -70,6 +70,17 @@ public class VideoServiceImpl implements VideoService {
         video.setTitle(title);
         video.setDescription(description != null ? description : "");
         video.setVideoUrl(minioUtil.getPublicUrl(objectName));
+        // 封面：用户上传 > 默认空
+        String coverUrl = "";
+        if (cover != null && !cover.isEmpty()) {
+            try {
+                String coverName = minioUtil.uploadImage(cover, "covers");
+                coverUrl = minioUtil.getPublicUrl(coverName);
+            } catch (Exception e) {
+                log.warn("封面上传失败", e);
+            }
+        }
+        video.setCoverUrl(coverUrl);
         video.setDuration(java.math.BigDecimal.ZERO); // TODO: 后续用 FFmpeg 提取时长
         video.setWidth(0);
         video.setHeight(0);

@@ -21,7 +21,7 @@ public interface VideoService {
      * @param userId      上传者ID
      * @return 视频信息
      */
-    VideoVO upload(MultipartFile file, String title, String description, String tags, Long userId);
+    VideoVO upload(MultipartFile file, String title, String description, String tags, MultipartFile cover, Long userId);
 
     /**
      * 分页查询视频列表

@@ -36,8 +36,9 @@ public class VideoController {
             @RequestParam("title") String title,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "tags", required = false) String tags,
+            @RequestParam(value = "cover", required = false) MultipartFile cover,
             @RequestAttribute("userId") Long userId) {
-        VideoVO vo = videoService.upload(file, title, description, tags, userId);
+        VideoVO vo = videoService.upload(file, title, description, tags, cover, userId);
         return Result.ok(vo);
     }
 

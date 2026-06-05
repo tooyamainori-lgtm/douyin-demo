@@ -8,6 +8,7 @@ const router = useRouter()
 
 const uploading = ref(false)
 const videoFile = ref<File | null>(null)
+const coverFile = ref<File | null>(null)
 
 const form = ref({
   title: '',
@@ -33,6 +34,7 @@ async function handleUpload() {
   fd.append('title', form.value.title.trim())
   fd.append('description', form.value.description.trim())
   fd.append('tags', form.value.tags.trim())
+  if (coverFile.value) fd.append('cover', coverFile.value)
 
   uploading.value = true
   try {
@@ -65,6 +67,24 @@ async function handleUpload() {
               {{ videoFile ? videoFile.name : '点击选择 MP4 文件' }}
             </el-button>
           </el-upload>
+        </el-form-item>
+
+        <el-form-item label="视频封面（选填）">
+          <el-upload
+            :auto-upload="false"
+            :limit="1"
+            accept="image/*"
+            :on-change="(f: any) => coverFile = f.raw"
+          >
+            <el-button size="small">
+              {{ coverFile ? coverFile.name : '选择封面图片' }}
+            </el-button>
+          </el-upload>
+          <img
+            v-if="coverFile"
+            :src="URL.createObjectURL(coverFile)"
+            class="cover-preview"
+          />
         </el-form-item>
 
         <el-form-item label="标题" required>
@@ -121,5 +141,14 @@ async function handleUpload() {
 
 .video-uploader :deep(.el-upload) {
   display: block;
+}
+
+.cover-preview {
+  width: 120px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-top: 8px;
+  border: 1px solid #e4e7ed;
 }
 </style>
