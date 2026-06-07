@@ -157,36 +157,36 @@ function formatCount(n: number) {
 
 <style scoped>
 .profile-container {
-  max-width: 600px;
-  margin: 40px auto;
-  padding: 0 16px;
+  max-width: 640px;
+  margin: 24px auto;
+  padding: 0 20px;
 }
 
 .profile-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 40px;
+  background: transparent;
+  border-radius: 0;
+  padding: 20px 0;
   text-align: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
 }
 
-.avatar-section {
-  margin-bottom: 16px;
-}
+/* 头部信息区 */
+.avatar-section { margin-bottom: 12px; }
 
 .avatar {
-  width: 80px;
-  height: 80px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fe2c55, #25f4ee);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-warm));
   color: #fff;
-  font-size: 32px;
+  font-size: 34px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(254,44,85,0.2);
 }
 
 .avatar-img {
@@ -197,26 +197,39 @@ function formatCount(n: number) {
 
 .avatar-text {
   color: #fff;
-  font-size: 32px;
+  font-size: 34px;
   font-weight: bold;
 }
 
 .nickname {
-  font-size: 20px;
-  margin-bottom: 4px;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 12px 0 2px;
+  color: var(--color-text);
 }
 
 .username {
-  color: #909399;
+  color: var(--color-text-muted);
   font-size: 14px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
+.follow-btn {
+  margin-bottom: 20px;
+  border-radius: var(--radius-lg) !important;
+  font-weight: 600 !important;
+}
+
+/* 数据统计 — 半透明胶囊背景 */
 .stats {
   display: flex;
   justify-content: center;
-  gap: 40px;
+  gap: 32px;
   margin-bottom: 20px;
+  padding: 16px 24px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
 }
 
 .stat-item {
@@ -225,63 +238,92 @@ function formatCount(n: number) {
   text-decoration: none;
   color: inherit;
   cursor: pointer;
+  transition: transform var(--transition-fast);
 }
 
+.stat-item:hover { transform: translateY(-1px); }
+
 .stat-value {
-  font-size: 18px;
-  font-weight: bold;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 .stat-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--color-text-muted);
+  margin-top: 2px;
 }
 
 .bio {
-  color: #606266;
-  margin-bottom: 12px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  margin: 8px 0;
+  padding: 0 20px;
+}
+
+.edit-link {
+  display: inline-block;
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
 }
 
 .create-time {
-  color: #c0c4cc;
+  color: var(--color-text-muted);
   font-size: 12px;
+  margin-top: 4px;
 }
 
+/* 作品区 — 白色卡片 */
 .user-videos {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid #f0f0f0;
+  margin-top: 28px;
+  padding: 20px 24px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
   text-align: left;
 }
 
 .user-videos h3 {
   font-size: 16px;
-  margin-bottom: 12px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--color-text);
 }
 
 .video-mini-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
 }
 
 .video-mini-card {
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  background: #f5f7fa;
+  background: var(--color-bg-alt);
+  transition: all var(--transition-normal);
+}
+
+.video-mini-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .mini-cover {
   aspect-ratio: 16 / 9;
-  background: #e4e7ed;
+  background: linear-gradient(135deg, #f0ebe3, #e8e3db);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--color-text-muted);
   font-size: 20px;
   overflow: hidden;
 }
+
 .mini-cover-img {
   width: 100%;
   height: 100%;
@@ -289,12 +331,14 @@ function formatCount(n: number) {
 }
 
 .mini-info {
-  padding: 8px;
+  padding: 10px;
 }
 
 .mini-title {
   display: block;
   font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -302,13 +346,14 @@ function formatCount(n: number) {
 
 .mini-views {
   font-size: 11px;
-  color: #909399;
+  color: var(--color-text-muted);
+  margin-top: 2px;
 }
 
 .no-videos {
-  color: #c0c4cc;
+  color: var(--color-text-muted);
   font-size: 14px;
   text-align: center;
-  padding: 12px 0;
+  padding: 20px 0;
 }
 </style>

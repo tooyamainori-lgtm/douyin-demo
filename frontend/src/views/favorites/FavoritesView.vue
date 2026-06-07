@@ -45,7 +45,8 @@ function formatTime(t: string) {
         @click="goToDetail(v.id)"
       >
         <div class="card-cover">
-          <div class="cover-placeholder">▶</div>
+          <img v-if="v.coverUrl" :src="v.coverUrl" alt="" />
+          <div v-else class="cover-placeholder">▶</div>
         </div>
         <div class="card-info">
           <h3 class="card-title">{{ v.title }}</h3>
@@ -67,70 +68,89 @@ function formatTime(t: string) {
 
 <style scoped>
 .favorites-page {
-  max-width: 800px;
+  max-width: 880px;
   margin: 0 auto;
-  padding: 20px 16px;
+  padding: 28px 20px;
 }
 
 .favorites-page h2 {
-  margin-bottom: 20px;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: var(--color-text);
 }
 
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
 }
 
 .video-card {
-  background: #fff;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s;
+  border: 1px solid var(--color-border);
+  transition: all var(--transition-normal);
 }
 
 .video-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
 }
 
 .card-cover {
   aspect-ratio: 16/9;
-  background: #e4e7ed;
+  background: linear-gradient(135deg, #f0ebe3, #e8e3db);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-size: 28px;
+  overflow: hidden;
+}
+
+.card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .card-info {
-  padding: 10px;
+  padding: 12px 14px;
 }
 
 .card-title {
   font-size: 14px;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  color: var(--color-text);
 }
 
 .card-meta {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   font-size: 12px;
-  color: #909399;
+  color: var(--color-text-muted);
 }
 
 .empty {
   text-align: center;
   padding: 80px 0;
-  color: #909399;
+  color: var(--color-text-muted);
 }
 
 .empty p {
   margin-bottom: 16px;
+  font-size: 15px;
+}
+
+.empty :deep(.el-button--primary) {
+  border-radius: var(--radius-lg);
+  font-weight: 600;
 }
 </style>
