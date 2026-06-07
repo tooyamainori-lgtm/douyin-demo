@@ -9,17 +9,17 @@ spring:
   application:
     name: douyin-backend
 
-  # 数据源配置
+  # 数据源配置（Docker 部署时通过环境变量覆盖）
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/douyin?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/douyin?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
 
-  # Redis 配置
+  # Redis 配置（Docker 部署时通过环境变量覆盖）
   data:
     redis:
-      host: localhost
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: 6379
       password:
       database: 0
@@ -48,22 +48,22 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   mapper-locations: classpath*:/mapper/**/*.xml
 
-# JWT 配置
+# JWT 配置（Docker 部署时通过环境变量覆盖）
 jwt:
-  secret: douyin-demo-jwt-secret-key-2026-must-be-at-least-256-bits-long
-  expiration: 604800000  # 7天，单位毫秒
+  secret: ${JWT_SECRET:douyin-demo-jwt-secret-key-2026-must-be-at-least-256-bits-long}
+  expiration: ${JWT_EXPIRATION:604800000}  # 7天，单位毫秒
 
-# MinIO 配置
+# MinIO 配置（Docker 部署时通过环境变量覆盖）
 minio:
-  endpoint: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket: douyin
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket: ${MINIO_BUCKET:douyin}
 
 # 自定义配置
 douyin:
   ffmpeg:
-    path: D:/APP/ffmpeg/bin/ffmpeg.exe
+    path: ${DOUYIN_FFMPEG_PATH:D:/APP/ffmpeg/bin/ffmpeg.exe}
 
 # 日志
 logging:

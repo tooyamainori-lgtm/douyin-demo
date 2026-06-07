@@ -10,7 +10,11 @@ WORKDIR /build
 COPY package*.json ./
 RUN npm install
 
+# VITE_API_BASE_URL: Docker 中请求走 nginx 反向代理，使用相对路径
+ARG VITE_API_BASE_URL=''
+
 COPY . .
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
 # ---------- 阶段2：运行 ----------

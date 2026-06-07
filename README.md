@@ -12,6 +12,7 @@
 | 收藏 | 收藏视频 / 收藏列表 | ✅ 已完成 |
 | 搜索 | 关键词搜索视频 | ✅ 已完成 |
 | 排行 | Redis ZSet 热门视频排行榜 | ✅ 已完成 |
+| Docker 部署 | docker compose 一键编排 | ✅ 已完成 |
 
 ### 暂不实现
 直播、私信、推荐算法、商城
@@ -136,12 +137,38 @@ npm run dev
 # 启动后访问 http://localhost:3000
 ```
 
-### Docker 部署（开发中）
+### Docker 部署
 
 ```bash
 docker compose up -d
 # 一键启动 MySQL + Redis + MinIO + Backend + Frontend
 ```
+
+**5 个容器**：
+| 容器 | 端口 | 说明 |
+|------|------|------|
+| douyin-mysql | 3306 | MySQL 8.0，自动建库建表 |
+| douyin-redis | 6379 | Redis 7 |
+| douyin-minio | 9000/9001 | 对象存储（API / 控制台） |
+| douyin-backend | 8080 | Spring Boot 后端（含 FFmpeg） |
+| douyin-frontend | 80 | Vue3 前端 + Nginx |
+
+**常用命令**：
+```bash
+docker compose up -d          # 启动
+docker compose down           # 停止
+docker compose up -d --build  # 重建并启动
+docker compose logs -f backend # 查看后端日志
+```
+
+**环境变量**（backend 服务，非必改 — 通过 docker-compose.yml 预设）：
+| 变量 | 默认值 |
+|------|------|
+| `SPRING_DATASOURCE_URL` | `jdbc:mysql://mysql:3306/douyin?...` |
+| `SPRING_DATA_REDIS_HOST` | `redis` |
+| `MINIO_ENDPOINT` | `http://minio:9000` |
+| `DOUYIN_FFMPEG_PATH` | `/usr/bin/ffmpeg` |
+| `JWT_SECRET` | 见 compose 文件 |
 
 ## 配置说明
 

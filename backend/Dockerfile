@@ -17,6 +17,9 @@ RUN mvn package -DskipTests -B -q
 # ---------- 阶段2：运行 ----------
 FROM eclipse-temurin:17-jre-alpine
 
+# 安装 FFmpeg（视频自动截取封面）
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 COPY --from=build /build/target/*.jar app.jar
 
