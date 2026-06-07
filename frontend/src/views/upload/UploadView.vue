@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { videoApi } from '@/api/video'
 import { ElMessage } from 'element-plus'
@@ -9,6 +9,11 @@ const router = useRouter()
 const uploading = ref(false)
 const videoFile = ref<File | null>(null)
 const coverFile = ref<File | null>(null)
+
+/** 封面预览 URL（Vue 模板中不能直接用 URL 全局对象，需在 script 中调用） */
+const coverPreviewUrl = computed(() =>
+  coverFile.value ? URL.createObjectURL(coverFile.value) : undefined,
+)
 
 const form = ref({
   title: '',
@@ -82,7 +87,7 @@ async function handleUpload() {
           </el-upload>
           <img
             v-if="coverFile"
-            :src="URL.createObjectURL(coverFile)"
+            :src="coverPreviewUrl"
             class="cover-preview"
           />
         </el-form-item>

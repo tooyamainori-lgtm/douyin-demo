@@ -26,6 +26,17 @@ public class MinioUtil {
     @Value("${minio.endpoint}")
     private String endpoint;
 
+    @Value("${minio.public-endpoint:#{null}}")
+    private String publicEndpoint;
+
+    /**
+     * 获取浏览器可访问的 MinIO 基础 URL
+     * Docker 部署时 public-endpoint 设为 http://localhost:9000，本地开发时为空则回退到 endpoint
+     */
+    private String getBaseUrl() {
+        return (publicEndpoint != null && !publicEndpoint.isEmpty()) ? publicEndpoint : endpoint;
+    }
+
     /**
      * 上传视频文件到 MinIO
      *
@@ -111,7 +122,7 @@ public class MinioUtil {
      * @return 完整访问 URL
      */
     public String getPublicUrl(String objectName) {
-        return endpoint + "/" + bucket + "/" + objectName;
+        return getBaseUrl() + "/" + bucket + "/" + objectName;
     }
 
     /**

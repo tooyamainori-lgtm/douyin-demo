@@ -8,6 +8,9 @@ export interface UserInfo {
   username: string
   nickname: string
   avatarUrl: string | null
+  bio: string | null
+  gender: number | null
+  birthday: string | null
   token?: string
 }
 
@@ -41,6 +44,9 @@ export const useUserStore = defineStore(
           username: info.username,
           nickname: info.nickname,
           avatarUrl: info.avatarUrl,
+          bio: info.bio,
+          gender: info.gender,
+          birthday: info.birthday,
         }
       } catch {
         // Token 过期或无效，清除登录态

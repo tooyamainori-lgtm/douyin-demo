@@ -8,8 +8,8 @@ FROM maven:3.9-eclipse-temurin-17 AS build
 
 WORKDIR /build
 COPY pom.xml .
-# 预先下载依赖，利用 Docker 缓存层
-RUN mvn dependency:go-offline -B -q
+# 预先下载依赖（利用 Docker 缓存层，失败也不影响后续构建）
+RUN mvn dependency:resolve -B -q || true
 
 COPY src ./src
 RUN mvn package -DskipTests -B -q

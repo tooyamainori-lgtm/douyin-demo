@@ -147,7 +147,7 @@ docker compose up -d
 **5 个容器**：
 | 容器 | 端口 | 说明 |
 |------|------|------|
-| douyin-mysql | 3306 | MySQL 8.0，自动建库建表 |
+| douyin-mysql | 3307 | MySQL 8.0，自动建库建表（避免和本机 MySQL 冲突） |
 | douyin-redis | 6379 | Redis 7 |
 | douyin-minio | 9000/9001 | 对象存储（API / 控制台） |
 | douyin-backend | 8080 | Spring Boot 后端（含 FFmpeg） |

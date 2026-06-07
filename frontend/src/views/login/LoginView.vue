@@ -28,7 +28,7 @@ async function handleLogin() {
   try {
     const user = await userApi.login(form.value)
     userStore.setLogin(
-      { id: user.id, username: user.username, nickname: user.nickname, avatarUrl: user.avatarUrl },
+      { id: user.id, username: user.username, nickname: user.nickname, avatarUrl: user.avatarUrl, bio: user.bio, gender: user.gender, birthday: user.birthday },
       user.token!,
     )
     ElMessage.success('登录成功')

@@ -56,6 +56,8 @@ jwt:
 # MinIO 配置（Docker 部署时通过环境变量覆盖）
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  # 浏览器公开访问地址（Docker 中 MinIO 内部 hostname 浏览器无法解析，需单独配置）
+  public-endpoint: ${MINIO_PUBLIC_ENDPOINT:}
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
   bucket: ${MINIO_BUCKET:douyin}

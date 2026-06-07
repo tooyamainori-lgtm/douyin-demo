@@ -4,7 +4,7 @@
 # ============================================================
 
 # ---------- 阶段1：构建 ----------
-FROM node:18-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /build
 COPY package*.json ./
