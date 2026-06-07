@@ -150,4 +150,14 @@ export const commentApi = {
   delete(commentId: string) {
     return request.delete(`/api/v1/comments/${commentId}`)
   },
+
+  /** 点赞评论 */
+  likeComment(commentId: string) {
+    return request.post(`/api/v1/comments/${commentId}/like`)
+  },
+
+  /** 取消点赞评论 */
+  unlikeComment(commentId: string) {
+    return request.delete(`/api/v1/comments/${commentId}/like`)
+  },
 }

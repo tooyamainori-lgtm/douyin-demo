@@ -64,4 +64,26 @@ public class CommentController {
         commentService.delete(commentId, userId);
         return Result.ok();
     }
+
+    /**
+     * 点赞评论
+     */
+    @PostMapping("/comments/{commentId}/like")
+    public Result<Void> likeComment(
+            @PathVariable Long commentId,
+            @RequestAttribute("userId") Long userId) {
+        commentService.likeComment(commentId, userId);
+        return Result.ok();
+    }
+
+    /**
+     * 取消点赞评论
+     */
+    @DeleteMapping("/comments/{commentId}/like")
+    public Result<Void> unlikeComment(
+            @PathVariable Long commentId,
+            @RequestAttribute("userId") Long userId) {
+        commentService.unlikeComment(commentId, userId);
+        return Result.ok();
+    }
 }

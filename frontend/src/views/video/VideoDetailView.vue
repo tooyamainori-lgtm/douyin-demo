@@ -21,6 +21,8 @@ const comments = ref<CommentInfo[]>([])
 const commentText = ref('')
 const replyTo = ref<{ id: string; userId: string; nickname: string } | null>(null)
 const commentLoading = ref(false)
+const likedComments = ref<Set<string>>(new Set())
+const commentLikeLoading = ref<Set<string>>(new Set())
 
 onMounted(async () => {
   const id = route.params.id as string
@@ -87,6 +89,32 @@ async function deleteComment(commentId: string) {
     ElMessage.success('已删除')
     await fetchComments()
   } catch (e) { console.error('获取评论失败', e) }
+}
+
+/** 点赞 / 取消点赞评论 */
+async function toggleCommentLike(c: CommentInfo) {
+  if (!userStore.isLogin) {
+    ElMessage.warning('请先登录')
+    router.push('/login')
+    return
+  }
+  if (commentLikeLoading.value.has(c.id)) return
+  commentLikeLoading.value.add(c.id)
+  try {
+    if (likedComments.value.has(c.id)) {
+      await commentApi.unlikeComment(c.id)
+      likedComments.value.delete(c.id)
+      c.likeCount = Math.max(0, c.likeCount - 1)
+    } else {
+      await commentApi.likeComment(c.id)
+      likedComments.value.add(c.id)
+      c.likeCount++
+    }
+  } catch {
+    // 忽略点赞错误
+  } finally {
+    commentLikeLoading.value.delete(c.id)
+  }
 }
 
 /** 视频开始播放时统计播放量（首次） */
@@ -311,7 +339,18 @@ function formatTime(time: string): string {
                 </div>
                 <p class="comment-content">{{ c.content }}</p>
                 <div class="comment-actions">
-                  <el-button type="primary" link size="small" @click="startReply(c)">回复</el-button>
+                  <el-button
+                    type="primary" link size="small"
+                    @click="startReply(c)"
+                  >回复</el-button>
+                  <el-button
+                    :type="likedComments.has(c.id) ? 'danger' : 'default'"
+                    link size="small"
+                    :loading="commentLikeLoading.has(c.id)"
+                    @click="toggleCommentLike(c)"
+                  >
+                    {{ likedComments.has(c.id) ? '❤' : '🤍' }} {{ c.likeCount || '' }}
+                  </el-button>
                   <el-button
                     v-if="userStore.user?.id === c.user.id"
                     type="danger"
@@ -338,6 +377,14 @@ function formatTime(time: string): string {
                         <div class="reply-meta">
                           <span class="reply-time">{{ r.createTime?.slice(0, 10) }}</span>
                           <el-button type="primary" link size="small" @click="startReply(r)">回复</el-button>
+                          <el-button
+                            :type="likedComments.has(r.id) ? 'danger' : 'default'"
+                            link size="small"
+                            :loading="commentLikeLoading.has(r.id)"
+                            @click="toggleCommentLike(r)"
+                          >
+                            {{ likedComments.has(r.id) ? '❤' : '🤍' }} {{ r.likeCount || '' }}
+                          </el-button>
                           <el-button
                             v-if="userStore.user?.id === r.user.id"
                             type="danger"

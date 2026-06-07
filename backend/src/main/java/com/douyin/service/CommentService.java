@@ -34,4 +34,20 @@ public interface CommentService {
      * @param userId    当前用户ID
      */
     void delete(Long commentId, Long userId);
+
+    /**
+     * 点赞评论
+     *
+     * @param commentId 评论ID
+     * @param userId    当前用户ID
+     */
+    void likeComment(Long commentId, Long userId);
+
+    /**
+     * 取消点赞评论
+     *
+     * @param commentId 评论ID
+     * @param userId    当前用户ID
+     */
+    void unlikeComment(Long commentId, Long userId);
 }

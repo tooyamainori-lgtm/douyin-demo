@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.douyin.common.exception.BusinessException;
 import com.douyin.dto.CommentDTO;
 import com.douyin.entity.Comment;
+import com.douyin.entity.CommentLike;
 import com.douyin.entity.User;
+import com.douyin.mapper.CommentLikeMapper;
 import com.douyin.mapper.CommentMapper;
 import com.douyin.mapper.UserMapper;
 import com.douyin.mapper.VideoMapper;
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 public class CommentServiceImpl implements CommentService {
 
     private final CommentMapper commentMapper;
+    private final CommentLikeMapper commentLikeMapper;
     private final UserMapper userMapper;
     private final VideoMapper videoMapper;
     private final NotificationService notificationService;
@@ -119,6 +122,43 @@ public class CommentServiceImpl implements CommentService {
             throw new BusinessException(403, "只能删除自己的评论");
         }
         commentMapper.deleteById(commentId);
+    }
+
+    @Override
+    public void likeComment(Long commentId, Long userId) {
+        // 检查是否已点赞
+        Long count = commentLikeMapper.selectCount(
+                new LambdaQueryWrapper<CommentLike>()
+                        .eq(CommentLike::getCommentId, commentId)
+                        .eq(CommentLike::getUserId, userId));
+        if (count > 0) {
+            throw new BusinessException(3005, "已经点赞过了");
+        }
+        // 插入点赞记录
+        CommentLike like = new CommentLike();
+        like.setCommentId(commentId);
+        like.setUserId(userId);
+        commentLikeMapper.insert(like);
+        // 评论点赞数 +1
+        Comment comment = commentMapper.selectById(commentId);
+        if (comment != null) {
+            comment.setLikeCount(comment.getLikeCount() + 1);
+            commentMapper.updateById(comment);
+        }
+    }
+
+    @Override
+    public void unlikeComment(Long commentId, Long userId) {
+        int deleted = commentLikeMapper.physicalDelete(commentId, userId);
+        if (deleted == 0) {
+            throw new BusinessException(3006, "还未点赞该评论");
+        }
+        // 评论点赞数 -1
+        Comment comment = commentMapper.selectById(commentId);
+        if (comment != null && comment.getLikeCount() > 0) {
+            comment.setLikeCount(comment.getLikeCount() - 1);
+            commentMapper.updateById(comment);
+        }
     }
 
     /**
