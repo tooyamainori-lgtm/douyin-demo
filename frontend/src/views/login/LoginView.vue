@@ -84,30 +84,46 @@ async function handleLogin() {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: #f5f7fa;
+  background: linear-gradient(160deg, #FAF7F2 0%, #F5F0EB 40%, #FFF0F3 100%);
 }
 
 .login-card {
   width: 400px;
-  padding: 40px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 44px 40px;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border);
 }
 
 .login-card h2 {
   text-align: center;
-  margin-bottom: 30px;
-  color: #303133;
+  margin-bottom: 8px;
+  color: var(--color-text);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.login-card :deep(.el-button--primary) {
+  border-radius: var(--radius-lg) !important;
+  font-weight: 600 !important;
+  height: 44px !important;
+}
+
+.login-card :deep(.el-input__wrapper) {
+  border-radius: var(--radius-sm) !important;
 }
 
 .register-link {
   text-align: center;
-  color: #909399;
+  color: var(--color-text-muted);
   font-size: 14px;
+  margin-top: 20px;
 }
 
 .register-link a {
-  color: #409eff;
+  color: var(--color-primary);
+  font-weight: 500;
+  text-decoration: none;
 }
 </style>
