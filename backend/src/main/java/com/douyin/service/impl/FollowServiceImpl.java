@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -75,10 +76,14 @@ public class FollowServiceImpl implements FollowService {
                 new LambdaQueryWrapper<Follow>()
                         .eq(Follow::getFollowerId, userId)
                         .orderByDesc(Follow::getCreateTime));
-        return follows.stream().map(f -> {
-            User u = userMapper.selectById(f.getFolloweeId());
-            return u != null ? toVO(u) : null;
-        }).filter(v -> v != null).collect(Collectors.toList());
+        if (follows.isEmpty()) return List.of();
+        // 批量查询用户，解决 N+1 问题
+        List<Long> userIds = follows.stream().map(Follow::getFolloweeId).distinct().collect(Collectors.toList());
+        Map<Long, User> userMap = userMapper.selectBatchIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+        return follows.stream()
+                .map(f -> toVO(userMap.get(f.getFolloweeId())))
+                .filter(v -> v != null).collect(Collectors.toList());
     }
 
     @Override
@@ -87,10 +92,14 @@ public class FollowServiceImpl implements FollowService {
                 new LambdaQueryWrapper<Follow>()
                         .eq(Follow::getFolloweeId, userId)
                         .orderByDesc(Follow::getCreateTime));
-        return follows.stream().map(f -> {
-            User u = userMapper.selectById(f.getFollowerId());
-            return u != null ? toVO(u) : null;
-        }).filter(v -> v != null).collect(Collectors.toList());
+        if (follows.isEmpty()) return List.of();
+        // 批量查询用户，解决 N+1 问题
+        List<Long> userIds = follows.stream().map(Follow::getFollowerId).distinct().collect(Collectors.toList());
+        Map<Long, User> userMap = userMapper.selectBatchIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+        return follows.stream()
+                .map(f -> toVO(userMap.get(f.getFollowerId())))
+                .filter(v -> v != null).collect(Collectors.toList());
     }
 
     @Override

@@ -93,6 +93,11 @@ export const videoApi = {
   getHot(top: number = 10) {
     return request.get<any, VideoInfo[]>(`/api/v1/videos/hot?top=${top}`)
   },
+
+  /** 关注动态 Feed */
+  getFollowingFeed(page: number, size: number) {
+    return request.get<any, PageResult<VideoInfo>>(`/api/v1/videos/following?page=${page}&size=${size}`)
+  },
 }
 
 /** 评论信息 */

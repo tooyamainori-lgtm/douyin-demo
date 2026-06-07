@@ -140,6 +140,25 @@ public class VideoController {
     }
 
     /**
+     * 关注动态 Feed — 我关注的人发布的视频
+     *
+     * @param page   页码
+     * @param size   每页条数
+     * @param userId 当前用户ID（JWT）
+     * @return 分页结果
+     */
+    @GetMapping("/following")
+    public Result<PageResult<VideoVO>> followingFeed(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestAttribute(value = "userId", required = false) Long userId) {
+        if (userId == null) {
+            return Result.ok(new PageResult<>(0L, (long) page, (long) size, List.of()));
+        }
+        return Result.ok(videoService.getFollowingFeed(userId, page, size));
+    }
+
+    /**
      * 热门视频排行榜
      *
      * @param top 前 N 名（默认 10）

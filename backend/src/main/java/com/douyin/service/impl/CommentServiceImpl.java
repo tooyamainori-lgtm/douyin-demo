@@ -9,6 +9,7 @@ import com.douyin.mapper.CommentMapper;
 import com.douyin.mapper.UserMapper;
 import com.douyin.mapper.VideoMapper;
 import com.douyin.service.CommentService;
+import com.douyin.service.NotificationService;
 import com.douyin.vo.CommentUserVO;
 import com.douyin.vo.CommentVO;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class CommentServiceImpl implements CommentService {
     private final CommentMapper commentMapper;
     private final UserMapper userMapper;
     private final VideoMapper videoMapper;
+    private final NotificationService notificationService;
 
     @Override
     public CommentVO publish(CommentDTO dto, Long userId) {
@@ -53,11 +55,18 @@ public class CommentServiceImpl implements CommentService {
         commentMapper.insert(comment);
 
         // 更新视频评论数
-        videoMapper.selectById(dto.getVideoId());
-        // 简单更新：用 SQL 原子加
         com.douyin.entity.Video video = videoMapper.selectById(dto.getVideoId());
         video.setCommentCount(video.getCommentCount() + 1);
         videoMapper.updateById(video);
+
+        // 通知视频作者（自己评论自己视频不通知）
+        if (!video.getUserId().equals(userId)) {
+            notificationService.create(video.getUserId(), userId, "comment", dto.getVideoId(), "评论了你的视频");
+        }
+        // 如果是回复评论，通知被回复者（不重复通知自己或视频作者）
+        if (dto.getReplyUserId() != null && !dto.getReplyUserId().equals(userId) && !dto.getReplyUserId().equals(video.getUserId())) {
+            notificationService.create(dto.getReplyUserId(), userId, "comment", dto.getVideoId(), "回复了你的评论");
+        }
 
         return buildCommentVO(comment, userId);
     }

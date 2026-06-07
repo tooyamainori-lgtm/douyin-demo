@@ -1,23 +1,34 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { videoApi, type VideoInfo } from '@/api/video'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
+
 const videos = ref<VideoInfo[]>([])
 const total = ref(0)
 const page = ref(1)
 const size = 10
 const loading = ref(false)
+const noMore = ref(false)
 const keyword = ref((route.query.keyword as string) || '')
-const tab = ref<'recommend' | 'hot'>('recommend')
+const tab = ref<'recommend' | 'following' | 'hot'>('recommend')
+
+let sentinel: HTMLElement | null = null
 
 onMounted(() => {
   fetchVideos()
+  nextTick(setupScroll)
 })
 
-// 搜索关键词变化时重新拉取
+onUnmounted(() => {
+  if (sentinel) sentinel.remove()
+})
+
+// 搜索关键词变化
 watch(() => route.query.keyword, (val) => {
   keyword.value = (val as string) || ''
   page.value = 1
@@ -28,43 +39,87 @@ watch(() => route.query.keyword, (val) => {
 // Tab 切换
 watch(tab, () => {
   page.value = 1
+  videos.value = []
+  noMore.value = false
   fetchVideos()
+})
+
+// 登录态变化刷新关注 Tab
+watch(() => userStore.token, () => {
+  if (tab.value === 'following') {
+    page.value = 1
+    videos.value = []
+    noMore.value = false
+    fetchVideos()
+  }
 })
 
 async function fetchVideos() {
   loading.value = true
   try {
     if (tab.value === 'hot') {
-      videos.value = await videoApi.getHot(10)
-      total.value = videos.value.length
+      const data = await videoApi.getHot(20)
+      videos.value = data
+      total.value = data.length
+      noMore.value = true
+    } else if (tab.value === 'following') {
+      if (!userStore.token) {
+        videos.value = []
+        total.value = 0
+        noMore.value = true
+        return
+      }
+      const result = await videoApi.getFollowingFeed(page.value, size)
+      videos.value = page.value === 1 ? result.records : [...videos.value, ...result.records]
+      total.value = result.total
+      noMore.value = videos.value.length >= result.total
     } else {
       const kw = keyword.value || undefined
       const result = await videoApi.list(page.value, size, kw)
-      videos.value = result.records
+      videos.value = page.value === 1 ? result.records : [...videos.value, ...result.records]
       total.value = result.total
+      noMore.value = videos.value.length >= result.total
     }
   } finally {
     loading.value = false
   }
 }
 
+/** 无限滚动 — IntersectionObserver 监听底部哨兵元素 */
+function setupScroll() {
+  sentinel = document.createElement('div')
+  sentinel.className = 'scroll-sentinel'
+  document.querySelector('.home-feed')?.appendChild(sentinel)
+
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !loading.value && !noMore.value) {
+      page.value++
+      fetchVideos()
+    }
+  }, { rootMargin: '200px' })
+  observer.observe(sentinel)
+}
+
+function switchTab(t: 'recommend' | 'following' | 'hot') {
+  if (t === 'following' && !userStore.token) {
+    router.push('/login')
+    return
+  }
+  tab.value = t
+}
+
 function goToDetail(id: string) {
   router.push(`/video/${id}`)
 }
 
-/** 格式化播放量 */
 function formatCount(count: number): string {
-  if (count >= 10000) {
-    return (count / 10000).toFixed(1) + '万'
-  }
+  if (count >= 10000) return (count / 10000).toFixed(1) + '万'
   return String(count)
 }
 
-/** 格式化时间 */
 function formatTime(time: string): string {
   if (!time) return ''
-  const d = new Date(time)
-  return d.toLocaleDateString('zh-CN')
+  return new Date(time).toLocaleDateString('zh-CN')
 }
 </script>
 
@@ -72,31 +127,19 @@ function formatTime(time: string): string {
   <div class="home-feed">
     <div class="feed-header">
       <div class="feed-tabs" v-if="!keyword">
-        <span
-          :class="{ active: tab === 'recommend' }"
-          @click="tab = 'recommend'"
-        >推荐</span>
-        <span
-          :class="{ active: tab === 'hot' }"
-          @click="tab = 'hot'"
-        >🔥 热门</span>
+        <span :class="{ active: tab === 'recommend' }" @click="switchTab('recommend')">推荐</span>
+        <span :class="{ active: tab === 'following' }" @click="switchTab('following')">关注</span>
+        <span :class="{ active: tab === 'hot' }" @click="switchTab('hot')">🔥 热门</span>
       </div>
       <h2 v-if="keyword">搜索：{{ keyword }}</h2>
       <span class="feed-count">共 {{ total }} 个视频</span>
     </div>
 
-    <div class="video-grid" v-loading="loading">
-      <div
-        v-for="video in videos"
-        :key="video.id"
-        class="video-card"
-        @click="goToDetail(video.id)"
-      >
+    <div class="video-grid" v-loading="loading && videos.length === 0">
+      <div v-for="video in videos" :key="video.id" class="video-card" @click="goToDetail(video.id)">
         <div class="card-cover">
           <img v-if="video.coverUrl" :src="video.coverUrl" alt="" />
-          <div v-else class="cover-placeholder">
-            <span>暂无封面</span>
-          </div>
+          <div v-else class="cover-placeholder"><span>暂无封面</span></div>
           <span class="card-duration" v-if="video.duration > 0">
             {{ Math.floor(video.duration / 60) }}:{{ String(Math.floor(video.duration % 60)).padStart(2, '0') }}
           </span>
@@ -115,8 +158,13 @@ function formatTime(time: string): string {
       </div>
     </div>
 
+    <div class="feed-loading" v-if="loading && videos.length > 0">
+      <p>加载中...</p>
+    </div>
+
     <div class="feed-empty" v-if="!loading && videos.length === 0">
-      <p>还没有视频，快去上传第一个吧！</p>
+      <p v-if="tab === 'following'">还没有关注任何人，去看看推荐吧！</p>
+      <p v-else>还没有视频，快去上传第一个吧！</p>
     </div>
   </div>
 </template>
@@ -261,5 +309,16 @@ function formatTime(time: string): string {
   text-align: center;
   padding: 80px 0;
   color: #909399;
+}
+
+.feed-loading {
+  text-align: center;
+  padding: 24px 0;
+  color: #909399;
+  font-size: 13px;
+}
+
+.scroll-sentinel {
+  height: 1px;
 }
 </style>

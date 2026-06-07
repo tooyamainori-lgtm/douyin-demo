@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.douyin.common.PageResult;
 import com.douyin.common.exception.BusinessException;
+import com.douyin.entity.Follow;
 import com.douyin.entity.LikeRecord;
 import com.douyin.entity.User;
 import com.douyin.entity.Video;
 import com.douyin.entity.VideoFavorite;
+import com.douyin.mapper.FollowMapper;
 import com.douyin.mapper.LikeRecordMapper;
 import com.douyin.mapper.VideoFavoriteMapper;
 import com.douyin.mapper.UserMapper;
@@ -48,6 +50,7 @@ public class VideoServiceImpl implements VideoService {
     private final UserMapper userMapper;
     private final LikeRecordMapper likeRecordMapper;
     private final VideoFavoriteMapper favoriteMapper;
+    private final FollowMapper followMapper;
     private final RedisUtil redisUtil;
     private final MinioUtil minioUtil;
     private final NotificationService notificationService;
@@ -348,6 +351,41 @@ public class VideoServiceImpl implements VideoService {
                 })
                 .filter(v -> v != null)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public PageResult<VideoVO> getFollowingFeed(Long userId, Integer page, Integer size) {
+        // 查询关注的用户ID列表
+        List<Long> followeeIds = followMapper.selectList(
+                new LambdaQueryWrapper<Follow>()
+                        .eq(Follow::getFollowerId, userId)
+                        .select(Follow::getFolloweeId)
+        ).stream().map(Follow::getFolloweeId).toList();
+
+        if (followeeIds.isEmpty()) {
+            return new PageResult<>(0L, (long) page, (long) size, List.of());
+        }
+
+        // 分页查询这些用户的视频，按时间倒序
+        Page<Video> mpPage = new Page<>(page, size);
+        Page<Video> result = videoMapper.selectPage(mpPage,
+                new LambdaQueryWrapper<Video>()
+                        .in(Video::getUserId, followeeIds)
+                        .orderByDesc(Video::getCreateTime));
+
+        List<VideoVO> records = result.getRecords().stream().map(v -> {
+            User author = userMapper.selectById(v.getUserId());
+            boolean isLiked = false;
+            if (userId != null) {
+                isLiked = likeRecordMapper.selectCount(
+                        new LambdaQueryWrapper<LikeRecord>()
+                                .eq(LikeRecord::getVideoId, v.getId())
+                                .eq(LikeRecord::getUserId, userId)) > 0;
+            }
+            return buildVideoVO(v, author, isLiked);
+        }).collect(Collectors.toList());
+
+        return new PageResult<>(result.getTotal(), (long) page, (long) size, records);
     }
 
     /**

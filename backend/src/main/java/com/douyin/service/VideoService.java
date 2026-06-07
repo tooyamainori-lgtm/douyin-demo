@@ -103,4 +103,14 @@ public interface VideoService {
      * @return 视频列表
      */
     List<VideoVO> getHotRank(int top);
+
+    /**
+     * 获取关注用户的视频动态（关注 Feed）
+     *
+     * @param userId 当前用户ID
+     * @param page   页码
+     * @param size   每页条数
+     * @return 分页结果
+     */
+    PageResult<VideoVO> getFollowingFeed(Long userId, Integer page, Integer size);
 }
