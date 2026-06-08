@@ -74,14 +74,16 @@ public class VideoController {
     }
 
     /**
-     * 播放量统计
+     * 播放量统计 + 观看历史（如果已登录）
      *
      * @param id 视频ID
      * @return 成功
      */
     @PostMapping("/{id}/view")
-    public Result<Void> recordView(@PathVariable Long id) {
-        videoService.recordView(id);
+    public Result<Void> recordView(
+            @PathVariable Long id,
+            @RequestAttribute(value = "userId", required = false) Long userId) {
+        videoService.recordView(id, userId);
         return Result.ok();
     }
 

@@ -9,11 +9,13 @@ import com.douyin.entity.LikeRecord;
 import com.douyin.entity.User;
 import com.douyin.entity.Video;
 import com.douyin.entity.VideoFavorite;
+import com.douyin.entity.WatchHistory;
 import com.douyin.mapper.FollowMapper;
 import com.douyin.mapper.LikeRecordMapper;
 import com.douyin.mapper.VideoFavoriteMapper;
 import com.douyin.mapper.UserMapper;
 import com.douyin.mapper.VideoMapper;
+import com.douyin.mapper.WatchHistoryMapper;
 import com.douyin.service.VideoService;
 import io.minio.DownloadObjectArgs;
 import io.minio.MinioClient;
@@ -21,6 +23,7 @@ import io.minio.MinioClient;
 import com.douyin.service.NotificationService;
 import com.douyin.util.MinioUtil;
 import com.douyin.util.RedisUtil;
+import com.douyin.vo.TagVO;
 import com.douyin.vo.VideoAuthorVO;
 import com.douyin.vo.VideoVO;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +54,7 @@ public class VideoServiceImpl implements VideoService {
     private final LikeRecordMapper likeRecordMapper;
     private final VideoFavoriteMapper favoriteMapper;
     private final FollowMapper followMapper;
+    private final WatchHistoryMapper watchHistoryMapper;
     private final RedisUtil redisUtil;
     private final MinioUtil minioUtil;
     private final NotificationService notificationService;
@@ -145,9 +149,10 @@ public class VideoServiceImpl implements VideoService {
                 .eq(Video::getStatus, 1) // 只查正常状态的视频
                 .orderByDesc(Video::getCreateTime);
 
-        // 关键词搜索（按标题模糊匹配）
+        // 关键词搜索（按标题模糊匹配），同时记录到热搜
         if (StringUtils.hasText(keyword)) {
             wrapper.like(Video::getTitle, keyword);
+            redisUtil.zIncrBy("hot_search", keyword, 1);
         }
 
         Page<Video> mpPage = new Page<>(page, size);
@@ -188,13 +193,31 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public void recordView(Long videoId) {
+    public void recordView(Long videoId, Long userId) {
         Video video = videoMapper.selectById(videoId);
         if (video != null) {
             video.setViewCount(video.getViewCount() + 1);
             videoMapper.updateById(video);
             // 更新热门排行榜：播放 +1
             redisUtil.addHotScore(videoId, 1);
+        }
+        // 记录观看历史（已登录用户）
+        if (userId != null) {
+            WatchHistory history = new WatchHistory();
+            history.setUserId(userId);
+            history.setVideoId(videoId);
+            // 已存在则更新 watch_time，不存在则插入
+            WatchHistory existing = watchHistoryMapper.selectOne(
+                    new LambdaQueryWrapper<WatchHistory>()
+                            .eq(WatchHistory::getUserId, userId)
+                            .eq(WatchHistory::getVideoId, videoId));
+            if (existing != null) {
+                existing.setWatchTime(java.time.LocalDateTime.now());
+                watchHistoryMapper.updateById(existing);
+            } else {
+                history.setWatchTime(java.time.LocalDateTime.now());
+                watchHistoryMapper.insert(history);
+            }
         }
     }
 
@@ -386,6 +409,63 @@ public class VideoServiceImpl implements VideoService {
         }).collect(Collectors.toList());
 
         return new PageResult<>(result.getTotal(), (long) page, (long) size, records);
+    }
+
+    // ======================== 预设标签 ========================
+
+    /** 预设标签定义：name → emoji */
+    private static final java.util.Map<String, String> PRESET_TAGS = java.util.Map.<String, String>ofEntries(
+            java.util.Map.entry("搞笑", "😂"),
+            java.util.Map.entry("舞蹈", "💃"),
+            java.util.Map.entry("音乐", "🎵"),
+            java.util.Map.entry("美食", "🍜"),
+            java.util.Map.entry("旅行", "✈️"),
+            java.util.Map.entry("萌宠", "🐶"),
+            java.util.Map.entry("运动", "⚽"),
+            java.util.Map.entry("颜值", "✨"),
+            java.util.Map.entry("知识", "📚"),
+            java.util.Map.entry("科技", "🚀"),
+            java.util.Map.entry("汽车", "🚗"),
+            java.util.Map.entry("时尚", "👗"),
+            java.util.Map.entry("二次元", "🎮"),
+            java.util.Map.entry("影视", "🎬"),
+            java.util.Map.entry("生活记录", "📝")
+    );
+
+    @Override
+    public List<TagVO> listTags() {
+        return PRESET_TAGS.entrySet().stream()
+                .map(entry -> {
+                    Long count = videoMapper.selectCount(
+                            new LambdaQueryWrapper<Video>()
+                                    .eq(Video::getStatus, 1)
+                                    .like(Video::getTags, entry.getKey()));
+                    return TagVO.builder()
+                            .name(entry.getKey())
+                            .videoCount(count)
+                            .icon(entry.getValue())
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public PageResult<VideoVO> getByTag(String tagName, Integer page, Integer size) {
+        Page<Video> mpPage = new Page<>(page, size);
+        Page<Video> result = videoMapper.selectPage(mpPage,
+                new LambdaQueryWrapper<Video>()
+                        .eq(Video::getStatus, 1)
+                        .like(Video::getTags, tagName)
+                        .orderByDesc(Video::getCreateTime));
+
+        List<VideoVO> records = result.getRecords().stream()
+                .map(v -> {
+                    User user = userMapper.selectById(v.getUserId());
+                    return buildVideoVO(v, user, false);
+                })
+                .collect(Collectors.toList());
+
+        return PageResult.of(result.getTotal(), result.getCurrent(), result.getSize(), records);
     }
 
     /**

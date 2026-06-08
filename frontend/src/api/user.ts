@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { type PageResult, type VideoInfo } from '@/api/video'
 
 /** 注册参数 */
 export interface RegisterParams {
@@ -93,6 +94,29 @@ export const userApi = {
   /** 获取粉丝列表 */
   getFollowers(userId: string) {
     return request.get<any, UserInfo[]>(`/api/v1/users/${userId}/followers`)
+  },
+}
+
+/** 用户统计 */
+export interface UserStats {
+  totalViews: number
+  totalLikes: number
+  totalComments: number
+  videoCount: number
+  fansCount: number
+  recentFansGrowth: number
+}
+
+/** 历史记录 API */
+export const historyApi = {
+  list(page: number, size: number) {
+    return request.get<any, PageResult<VideoInfo>>(`/api/v1/users/me/history?page=${page}&size=${size}`)
+  },
+  clear() {
+    return request.delete('/api/v1/users/me/history')
+  },
+  remove(videoId: string) {
+    return request.delete(`/api/v1/users/me/history/${videoId}`)
   },
 }
 

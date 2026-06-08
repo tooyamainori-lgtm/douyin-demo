@@ -62,4 +62,12 @@ public interface UserService {
      * @return 头像URL
      */
     String uploadAvatar(Long userId, MultipartFile file);
+
+    /**
+     * 用户数据统计
+     *
+     * @param userId 用户ID
+     * @return 统计数据
+     */
+    com.douyin.vo.UserStatsVO getUserStats(Long userId);
 }

@@ -151,3 +151,34 @@ CREATE TABLE `notification` (
     KEY `idx_notification_user_id` (`user_id`),
     KEY `idx_notification_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息通知表';
+
+-- ============================================================
+-- 观看历史
+-- ============================================================
+
+CREATE TABLE `watch_history` (
+    `id`          BIGINT     NOT NULL COMMENT '主键ID',
+    `user_id`     BIGINT     NOT NULL COMMENT '用户ID',
+    `video_id`    BIGINT     NOT NULL COMMENT '视频ID',
+    `watch_time`  DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近观看时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_history_user_video` (`user_id`, `video_id`),
+    KEY `idx_history_user_time` (`user_id`, `watch_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='观看历史表';
+
+-- ============================================================
+-- 聊天消息
+-- ============================================================
+
+CREATE TABLE `chat_message` (
+    `id`          BIGINT        NOT NULL COMMENT '主键ID',
+    `sender_id`   BIGINT        NOT NULL COMMENT '发送者ID',
+    `receiver_id` BIGINT        NOT NULL COMMENT '接收者ID',
+    `content`     VARCHAR(1000) NOT NULL COMMENT '消息内容',
+    `is_read`     TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '是否已读',
+    `create_time` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_chat_users` (`sender_id`, `receiver_id`),
+    KEY `idx_chat_receiver` (`receiver_id`, `sender_id`),
+    KEY `idx_chat_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天消息表';

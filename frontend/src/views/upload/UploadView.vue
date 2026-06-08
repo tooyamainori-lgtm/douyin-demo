@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { videoApi } from '@/api/video'
+import { tagApi, type TagInfo } from '@/api/tag'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -9,8 +10,10 @@ const router = useRouter()
 const uploading = ref(false)
 const videoFile = ref<File | null>(null)
 const coverFile = ref<File | null>(null)
+const allTags = ref<TagInfo[]>([])
+const selectedTags = ref<string[]>([])
 
-/** 封面预览 URL（Vue 模板中不能直接用 URL 全局对象，需在 script 中调用） */
+/** 封面预览 URL */
 const coverPreviewUrl = computed(() =>
   coverFile.value ? URL.createObjectURL(coverFile.value) : undefined,
 )
@@ -18,8 +21,26 @@ const coverPreviewUrl = computed(() =>
 const form = ref({
   title: '',
   description: '',
-  tags: '',
 })
+
+/** 加载预设标签列表 */
+onMounted(async () => {
+  try {
+    allTags.value = await tagApi.list()
+  } catch { /* 忽略 */ }
+})
+
+/** 切换标签选中 */
+function toggleTag(name: string) {
+  const idx = selectedTags.value.indexOf(name)
+  if (idx >= 0) {
+    selectedTags.value.splice(idx, 1)
+  } else if (selectedTags.value.length < 3) {
+    selectedTags.value.push(name)
+  } else {
+    ElMessage.warning('最多选择 3 个标签')
+  }
+}
 
 function handleFileChange(file: File) {
   videoFile.value = file
@@ -38,7 +59,7 @@ async function handleUpload() {
   fd.append('video', videoFile.value)
   fd.append('title', form.value.title.trim())
   fd.append('description', form.value.description.trim())
-  fd.append('tags', form.value.tags.trim())
+  fd.append('tags', selectedTags.value.join(','))
   if (coverFile.value) fd.append('cover', coverFile.value)
 
   uploading.value = true
@@ -106,8 +127,18 @@ async function handleUpload() {
           />
         </el-form-item>
 
-        <el-form-item label="标签">
-          <el-input v-model="form.tags" placeholder="用逗号分隔，如：搞笑,日常" />
+        <el-form-item label="标签（最多3个）">
+          <div class="tag-selector">
+            <span
+              v-for="tag in allTags"
+              :key="tag.name"
+              :class="['tag-chip', { selected: selectedTags.includes(tag.name) }]"
+              @click="toggleTag(tag.name)"
+            >
+              <span class="tag-chip-icon">{{ tag.icon }}</span>
+              <span class="tag-chip-name">{{ tag.name }}</span>
+            </span>
+          </div>
         </el-form-item>
 
         <el-form-item>
@@ -156,4 +187,42 @@ async function handleUpload() {
   margin-top: 8px;
   border: 1px solid #e4e7ed;
 }
+
+/* Tag chips */
+.tag-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tag-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-alt);
+  border: 2px solid transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.tag-chip:hover {
+  border-color: var(--color-border);
+  color: var(--color-text);
+  transform: translateY(-1px);
+}
+
+.tag-chip.selected {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.tag-chip-icon { font-size: 14px; }
+.tag-chip-name { line-height: 1; }
 </style>

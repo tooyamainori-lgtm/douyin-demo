@@ -43,11 +43,12 @@ public interface VideoService {
     VideoVO getDetail(Long videoId, Long userId);
 
     /**
-     * 播放量 +1
+     * 播放量 +1 并记录观看历史
      *
      * @param videoId 视频ID
+     * @param userId  当前用户ID（可为null）
      */
-    void recordView(Long videoId);
+    void recordView(Long videoId, Long userId);
 
     /**
      * 点赞视频
@@ -113,4 +114,21 @@ public interface VideoService {
      * @return 分页结果
      */
     PageResult<VideoVO> getFollowingFeed(Long userId, Integer page, Integer size);
+
+    /**
+     * 获取预设标签列表（含视频数量）
+     *
+     * @return 标签列表
+     */
+    List<com.douyin.vo.TagVO> listTags();
+
+    /**
+     * 按标签分页查询视频
+     *
+     * @param tagName 标签名
+     * @param page    页码
+     * @param size    每页条数
+     * @return 分页结果
+     */
+    PageResult<VideoVO> getByTag(String tagName, Integer page, Integer size);
 }

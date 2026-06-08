@@ -2,9 +2,10 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { userApi, followApi, type UserProfile } from '@/api/user'
+import { userApi, followApi, type UserProfile, type UserStats } from '@/api/user'
 import { videoApi, type VideoInfo } from '@/api/video'
 import { useUserStore } from '@/stores/user'
+import request from '@/utils/request'
 
 const userStore = useUserStore()
 
@@ -13,17 +14,25 @@ const router = useRouter()
 const profile = ref<UserProfile | null>(null)
 const videos = ref<VideoInfo[]>([])
 const loading = ref(true)
+const stats = ref<UserStats | null>(null)
 
 async function loadProfile(userId: string) {
   loading.value = true
   try {
     profile.value = await userApi.getUserProfile(userId)
-    await fetchVideos(userId)
+    await Promise.all([fetchVideos(userId), fetchStats(userId)])
   } catch {
     ElMessage.error('加载用户信息失败')
   } finally {
     loading.value = false
   }
+}
+
+async function fetchStats(userId: string) {
+  try {
+    const res: any = await request.get(`/api/v1/users/${userId}/stats`)
+    if (res) stats.value = res
+  } catch { /* 忽略 */ }
 }
 
 onMounted(() => loadProfile(route.params.id as string))
@@ -119,6 +128,29 @@ function formatCount(n: number) {
           <span class="stat-label">获赞</span>
         </div>
       </div>
+      <!-- 创作者数据中心（仅自己可见） -->
+      <div class="creator-stats" v-if="stats && userStore.user?.id === profile?.id">
+        <h4 class="creator-stats-title">📊 创作数据中心</h4>
+        <div class="creator-grid">
+          <div class="creator-stat-item">
+            <span class="csi-value">{{ formatCount(stats.totalViews) }}</span>
+            <span class="csi-label">总播放</span>
+          </div>
+          <div class="creator-stat-item">
+            <span class="csi-value">{{ formatCount(stats.totalLikes) }}</span>
+            <span class="csi-label">总获赞</span>
+          </div>
+          <div class="creator-stat-item">
+            <span class="csi-value">{{ formatCount(stats.totalComments) }}</span>
+            <span class="csi-label">总评论</span>
+          </div>
+          <div class="creator-stat-item highlight">
+            <span class="csi-value">+{{ formatCount(stats.recentFansGrowth) }}</span>
+            <span class="csi-label">近7天新粉丝</span>
+          </div>
+        </div>
+      </div>
+
       <p class="bio" v-if="profile?.bio">{{ profile.bio }}</p>
       <router-link
         v-if="userStore.isLogin && userStore.user?.id === profile?.id"
@@ -355,5 +387,60 @@ function formatCount(n: number) {
   font-size: 14px;
   text-align: center;
   padding: 20px 0;
+}
+
+/* 创作者数据中心 */
+.creator-stats {
+  margin: 20px 0;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--color-primary-soft), #FFF7ED);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .creator-stats {
+  background: linear-gradient(135deg, rgba(254,44,85,0.1), rgba(245,158,11,0.1));
+}
+
+.creator-stats-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.creator-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.creator-stat-item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 6px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.creator-stat-item.highlight {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+}
+
+.creator-stat-item.highlight .csi-value,
+.creator-stat-item.highlight .csi-label { color: #fff; }
+
+.csi-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.csi-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
 }
 </style>

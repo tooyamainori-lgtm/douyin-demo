@@ -76,6 +76,56 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ============================================================
+   Dark Mode
+   ============================================================ */
+[data-theme="dark"] {
+  --color-bg: #1A1A2E;
+  --color-bg-alt: #222240;
+  --color-surface: #2A2A45;
+  --color-border: #3A3A5C;
+  --color-text: #EAE8E3;
+  --color-text-secondary: #9D9AA0;
+  --color-text-muted: #6B6870;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.4);
+  --shadow-glow: 0 4px 20px rgba(254,44,85,0.25);
+}
+
+[data-theme="dark"] body {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .navbar {
+  background: rgba(26, 26, 46, 0.85);
+}
+
+[data-theme="dark"] .el-button--default {
+  --el-button-bg-color: var(--color-bg-alt);
+  --el-button-border-color: var(--color-border);
+  --el-button-text-color: var(--color-text);
+  --el-button-hover-bg-color: var(--color-border);
+  --el-button-hover-text-color: var(--color-text);
+}
+
+[data-theme="dark"] .el-input__wrapper {
+  background: var(--color-bg-alt) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .el-input__inner {
+  color: var(--color-text) !important;
+}
+
+[data-theme="dark"] input::placeholder {
+  color: var(--color-text-muted);
+}
+
+[data-theme="dark"] textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
 /* Element Plus 全局覆盖 */
 .el-button--primary {
   --el-button-bg-color: var(--color-primary);

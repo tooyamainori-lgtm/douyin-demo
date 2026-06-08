@@ -53,6 +53,21 @@ const router = createRouter({
       name: 'favorites',
       component: () => import('@/views/favorites/FavoritesView.vue'),
     },
+    {
+      path: '/tag/:tagName',
+      name: 'tag-videos',
+      component: () => import('@/views/tag/TagVideosView.vue'),
+    },
+    {
+      path: '/history',
+      name: 'history',
+      component: () => import('@/views/history/HistoryView.vue'),
+    },
+    {
+      path: '/chat/:userId',
+      name: 'chat',
+      component: () => import('@/views/chat/ChatView.vue'),
+    },
   ],
 })
 

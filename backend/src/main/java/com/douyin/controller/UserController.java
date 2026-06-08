@@ -137,4 +137,12 @@ public class UserController {
         String url = userService.uploadAvatar(userId, file);
         return Result.ok(url);
     }
+
+    /**
+     * 用户数据统计（创作者的播放/点赞/粉丝汇总）
+     */
+    @GetMapping("/{id}/stats")
+    public Result<com.douyin.vo.UserStatsVO> getUserStats(@PathVariable Long id) {
+        return Result.ok(userService.getUserStats(id));
+    }
 }

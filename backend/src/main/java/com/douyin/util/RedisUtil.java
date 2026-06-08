@@ -37,16 +37,41 @@ public class RedisUtil {
      * @return 视频ID → 热度分（有序）
      */
     public Map<Long, Double> getHotRank(int top) {
-        Set<ZSetOperations.TypedTuple<Object>> set = redisTemplate.opsForZSet()
-                .reverseRangeWithScores(HOT_KEY, 0, top - 1);
-
+        Map<Object, Double> raw = zReverseRangeWithScores(HOT_KEY, 0, top - 1);
         Map<Long, Double> result = new LinkedHashMap<>();
+        raw.forEach((k, v) -> result.put(Long.valueOf(k.toString()), v));
+        return result;
+    }
+
+    /**
+     * 通用 ZSet 逆序范围查询（带分数）
+     *
+     * @param key   Redis key
+     * @param start 起始位置
+     * @param end   结束位置
+     * @return member → score（有序）
+     */
+    public Map<Object, Double> zReverseRangeWithScores(String key, long start, long end) {
+        Set<ZSetOperations.TypedTuple<Object>> set = redisTemplate.opsForZSet()
+                .reverseRangeWithScores(key, start, end);
+
+        Map<Object, Double> result = new LinkedHashMap<>();
         if (set != null) {
             for (ZSetOperations.TypedTuple<Object> tuple : set) {
-                Long videoId = Long.valueOf(tuple.getValue().toString());
-                result.put(videoId, tuple.getScore());
+                result.put(tuple.getValue(), tuple.getScore());
             }
         }
         return result;
+    }
+
+    /**
+     * ZSet 增加分数
+     *
+     * @param key    Redis key
+     * @param member 成员
+     * @param score  分数
+     */
+    public void zIncrBy(String key, String member, double score) {
+        redisTemplate.opsForZSet().incrementScore(key, member, score);
     }
 }

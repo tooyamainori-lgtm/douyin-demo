@@ -8,6 +8,7 @@ import com.douyin.dto.UpdateProfileDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.douyin.entity.User;
 import com.douyin.entity.Video;
+import com.douyin.mapper.FollowMapper;
 import com.douyin.mapper.UserMapper;
 import com.douyin.mapper.VideoMapper;
 import com.douyin.service.FollowService;
@@ -15,6 +16,7 @@ import com.douyin.service.UserService;
 import com.douyin.util.JwtUtil;
 import com.douyin.util.MinioUtil;
 import com.douyin.vo.UserProfileVO;
+import com.douyin.vo.UserStatsVO;
 import com.douyin.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
     private final VideoMapper videoMapper;
+    private final FollowMapper followMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final MinioUtil minioUtil;
@@ -172,6 +175,26 @@ public class UserServiceImpl implements UserService {
             log.error("头像上传失败", e);
             throw new BusinessException(2002, "上传失败，请重试");
         }
+    }
+
+    @Override
+    public UserStatsVO getUserStats(Long userId) {
+        Long videoCount = videoMapper.selectCount(
+                new LambdaQueryWrapper<Video>().eq(Video::getUserId, userId).eq(Video::getStatus, 1));
+        Long totalViews = videoMapper.getTotalViewsByUserId(userId);
+        Long totalLikes = videoMapper.getTotalLikesByUserId(userId);
+        Long totalComments = videoMapper.getTotalCommentsByUserId(userId);
+        Long fansCount = followService.countFollowers(userId);
+        Long recentFansGrowth = followMapper.countRecentFollowers(userId, 7);
+
+        return UserStatsVO.builder()
+                .totalViews(totalViews != null ? totalViews : 0L)
+                .totalLikes(totalLikes != null ? totalLikes : 0L)
+                .totalComments(totalComments != null ? totalComments : 0L)
+                .videoCount(videoCount != null ? videoCount : 0L)
+                .fansCount(fansCount)
+                .recentFansGrowth(recentFansGrowth != null ? recentFansGrowth : 0L)
+                .build();
     }
 
     private UserVO buildUserVO(User user) {

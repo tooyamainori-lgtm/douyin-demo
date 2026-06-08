@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { videoApi, commentApi, favoriteApi, type VideoInfo, type CommentInfo } from '@/api/video'
+import { chatApi, type ChatContact } from '@/api/chat'
 import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
@@ -15,6 +16,12 @@ const likeLoading = ref(false)
 const favLoading = ref(false)
 const deleteLoading = ref(false)
 const hasRecordedView = ref(false)
+
+// 分享
+const shareDialogVisible = ref(false)
+const shareFriends = ref<ChatContact[]>([])
+const shareLoading = ref(false)
+const sharingTo = ref<string | null>(null)
 
 // 评论
 const comments = ref<CommentInfo[]>([])
@@ -211,6 +218,37 @@ function formatTime(time: string): string {
   if (!time) return ''
   return new Date(time).toLocaleDateString('zh-CN')
 }
+
+/** 打开分享面板 */
+async function openShare() {
+  if (!userStore.isLogin) {
+    ElMessage.warning('请先登录')
+    router.push('/login')
+    return
+  }
+  shareDialogVisible.value = true
+  shareLoading.value = true
+  try {
+    shareFriends.value = await chatApi.getContacts()
+  } catch { shareFriends.value = [] }
+  finally { shareLoading.value = false }
+}
+
+/** 分享给好友 */
+async function shareTo(friend: ChatContact) {
+  if (!video.value) return
+  sharingTo.value = friend.userId
+  try {
+    const shareText = `[视频分享] ${video.value.title} \n${window.location.origin}/video/${video.value.id}`
+    await chatApi.send(friend.userId, shareText)
+    ElMessage.success(`已分享给 ${friend.nickname}`)
+    shareDialogVisible.value = false
+  } catch {
+    ElMessage.error('分享失败')
+  } finally {
+    sharingTo.value = null
+  }
+}
 </script>
 
 <template>
@@ -260,6 +298,13 @@ function formatTime(time: string): string {
             {{ video.isFavorited ? '⭐ 已收藏' : '☆ 收藏' }}
           </el-button>
           <el-button
+            type="primary"
+            size="large"
+            @click="openShare"
+          >
+            📤 分享给好友
+          </el-button>
+          <el-button
             v-if="userStore.user?.id === video.author.id"
             type="danger"
             size="large"
@@ -290,7 +335,8 @@ function formatTime(time: string): string {
             v-for="tag in video.tags.split(',').filter(Boolean)"
             :key="tag"
             size="small"
-            style="margin-right: 8px"
+            style="margin-right: 8px; cursor: pointer"
+            @click="router.push(`/tag/${encodeURIComponent(tag)}`)"
           >
             {{ tag }}
           </el-tag>
@@ -425,6 +471,28 @@ function formatTime(time: string): string {
       </div>
     </template>
   </div>
+
+  <!-- 分享弹窗 -->
+  <el-dialog v-model="shareDialogVisible" title="分享给好友" width="420px" :close-on-click-modal="true">
+    <div class="share-friend-list" v-loading="shareLoading">
+      <div v-if="shareFriends.length === 0 && !shareLoading" class="share-empty">
+        <p>暂无好友</p>
+        <p class="share-hint">互相关注即可成为好友，分享视频给他们</p>
+      </div>
+      <div
+        v-for="f in shareFriends" :key="f.userId"
+        class="share-friend-item"
+        @click="shareTo(f)"
+      >
+        <div class="share-friend-avatar">
+          <img v-if="f.avatarUrl" :src="f.avatarUrl" />
+          <span v-else>{{ f.nickname?.charAt(0) || '?' }}</span>
+        </div>
+        <span class="share-friend-name">{{ f.nickname }}</span>
+        <span class="share-sending" v-if="sharingTo === f.userId">发送中...</span>
+      </div>
+    </div>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -662,4 +730,29 @@ function formatTime(time: string): string {
   color: #c0c4cc;
   padding: 40px 0;
 }
+
+/* Share dialog */
+.share-friend-list { max-height: 360px; overflow-y: auto; }
+.share-empty { text-align: center; padding: 40px 0; color: var(--color-text-muted); }
+.share-empty p { font-size: 15px; }
+.share-hint { font-size: 13px !important; margin-top: 6px; }
+
+.share-friend-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: background var(--transition-fast);
+}
+
+.share-friend-item:hover { background: var(--color-bg-alt); }
+
+.share-friend-avatar {
+  width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-cool));
+  display: flex; align-items: center; justify-content: center;
+}
+
+.share-friend-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.share-friend-avatar span { color: #fff; font-size: 16px; font-weight: bold; }
+.share-friend-name { flex: 1; font-size: 14px; color: var(--color-text); font-weight: 500; }
+.share-sending { font-size: 12px; color: var(--color-primary); }
 </style>

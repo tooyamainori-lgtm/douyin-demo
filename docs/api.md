@@ -23,6 +23,7 @@
 - [视频模块](#视频模块)
 - [互动模块](#互动模块)
 - [关注模块](#关注模块)
+- [标签模块](#标签模块)
 - [消息通知](#消息通知)
 - [搜索模块](#搜索模块)
 - [错误码说明](#错误码说明)
@@ -540,6 +541,88 @@ GET /api/v1/users/{userId}/followers
 
 ---
 
+## 标签模块
+
+> 预设标签：搞笑、舞蹈、音乐、美食、旅行、萌宠、运动、颜值、知识、科技、汽车、时尚、二次元、影视、生活记录
+
+### 标签列表
+
+```
+GET /api/v1/tags
+```
+
+**响应**
+```json
+{
+  "code": 200,
+  "data": [
+    { "name": "搞笑", "videoCount": 12, "icon": "😂" },
+    { "name": "音乐", "videoCount": 8, "icon": "🎵" }
+  ]
+}
+```
+
+### 按标签浏览视频
+
+```
+GET /api/v1/tags/{tagName}/videos?page=1&size=10
+```
+
+**响应**：同视频列表分页格式。
+
+---
+
+## 消息模块
+
+> 好友 = 互相关注。消息页分两个 tab：互动消息（系统通知）+ 好友聊天（私信）。
+
+### 联系人列表（好友 + 有聊天记录的人）
+
+```
+GET /api/v1/messages/contacts
+Authorization: Bearer <token>
+```
+
+**响应**
+```json
+{
+  "code": 200,
+  "data": [{
+    "userId": "123",
+    "nickname": "好友昵称",
+    "avatarUrl": "http://...",
+    "lastMessage": "最近一条消息",
+    "lastTime": "06-08 21:30",
+    "unreadCount": 3
+  }]
+}
+```
+
+### 聊天记录
+
+```
+GET /api/v1/messages/{userId}?limit=50
+Authorization: Bearer <token>
+```
+
+### 发送消息
+
+```
+POST /api/v1/messages/{userId}
+Authorization: Bearer <token>
+Content-Type: application/json
+{ "content": "你好！" }
+```
+
+### 未读消息总数
+
+```
+GET /api/v1/messages/unread-count
+Authorization: Bearer <token>
+```
+
+---
+
 ## 消息通知
 
 ### 通知列表
@@ -566,6 +649,26 @@ Authorization: Bearer <token>
 ---
 
 ## 搜索模块
+
+### 搜索联想
+
+```
+GET /api/v1/search/suggestions?keyword=xxx&limit=8
+```
+
+**响应**
+```json
+{
+  "code": 200,
+  "data": [
+    { "keyword": "ElainaTest", "type": "title", "count": null },
+    { "keyword": "搞笑", "type": "tag", "count": null },
+    { "keyword": "test", "type": "hot", "count": 1 }
+  ]
+}
+```
+
+> type 含义：`title`-标题匹配 `tag`-标签匹配 `hot`-热门搜索
 
 ### 搜索视频
 
