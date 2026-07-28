@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { chatApi, type ChatContact } from '@/api/chat'
-import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
 
 interface NotificationItem {
@@ -16,7 +15,6 @@ interface NotificationItem {
   fromUser: { id: string; nickname: string; avatarUrl: string | null }
 }
 
-const userStore = useUserStore()
 const router = useRouter()
 
 const activeTab = ref<'notify' | 'chat'>('chat')

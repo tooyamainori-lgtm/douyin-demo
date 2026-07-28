@@ -12,6 +12,7 @@ import com.douyin.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -30,19 +31,21 @@ public class FollowServiceImpl implements FollowService {
     private final NotificationService notificationService;
 
     @Override
+    @Transactional
     public void follow(Long userId, Long targetId) {
         if (userId.equals(targetId)) {
             throw new BusinessException(400, "不能关注自己");
         }
-        // 先清理可能存在的软删除残留
-        followMapper.physicalDelete(userId, targetId);
-        // 检查是否已存在有效关注
+        if (userMapper.selectById(targetId) == null) {
+            throw new BusinessException(404, "用户不存在");
+        }
+        // 重复关注按幂等成功处理，不重复写入关系和通知。
         Long count = followMapper.selectCount(
                 new LambdaQueryWrapper<Follow>()
                         .eq(Follow::getFollowerId, userId)
                         .eq(Follow::getFolloweeId, targetId));
         if (count > 0) {
-            throw new BusinessException(3003, "已经关注过了");
+            return;
         }
         Follow follow = new Follow();
         follow.setFollowerId(userId);
@@ -53,6 +56,7 @@ public class FollowServiceImpl implements FollowService {
     }
 
     @Override
+    @Transactional
     public void unfollow(Long userId, Long targetId) {
         int deleted = followMapper.physicalDelete(userId, targetId);
         if (deleted == 0) {

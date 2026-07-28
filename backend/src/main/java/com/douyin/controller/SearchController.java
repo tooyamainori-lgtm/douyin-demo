@@ -39,6 +39,8 @@ public class SearchController {
             @RequestParam String keyword,
             @RequestParam(defaultValue = "8") int limit) {
 
+        limit = Math.max(1, Math.min(limit, 20));
+
         List<SearchSuggestionVO> result = new ArrayList<>();
         Set<String> seen = new HashSet<>();
 
@@ -46,7 +48,7 @@ public class SearchController {
         if (StringUtils.hasText(keyword)) {
             List<Video> titleMatches = videoMapper.selectList(
                     new LambdaQueryWrapper<Video>()
-                            .select(Video::getTitle)
+                            .select(Video::getTitle, Video::getViewCount)
                             .eq(Video::getStatus, 1)
                             .likeRight(Video::getTitle, keyword)
                             .orderByDesc(Video::getViewCount)

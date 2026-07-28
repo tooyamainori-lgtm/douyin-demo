@@ -117,7 +117,7 @@ public class UserController {
      */
     @PutMapping("/me")
     public Result<UserVO> updateProfile(
-            @RequestBody UpdateProfileDTO dto,
+            @Valid @RequestBody UpdateProfileDTO dto,
             @RequestAttribute("userId") Long userId) {
         UserVO vo = userService.updateProfile(userId, dto);
         return Result.ok(vo);

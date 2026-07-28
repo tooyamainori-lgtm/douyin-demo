@@ -28,6 +28,9 @@ public class MinioConfig {
     @Value("${minio.bucket}")
     private String bucket;
 
+    @Value("${minio.initialize-bucket:true}")
+    private boolean initializeBucket;
+
     /**
      * 创建 MinioClient Bean
      */
@@ -38,6 +41,10 @@ public class MinioConfig {
                 .credentials(accessKey, secretKey)
                 .build();
         log.info("MinIO 客户端初始化成功，endpoint: {}", endpoint);
+
+        if (!initializeBucket) {
+            return client;
+        }
 
         // 确保 Bucket 存在并设置为公开读
         try {

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -17,6 +18,10 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class MinioUtil {
+
+    private static final long MAX_IMAGE_SIZE = 10L * 1024 * 1024;
+    private static final Set<String> IMAGE_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/webp", "image/gif");
 
     private final MinioClient minioClient;
 
@@ -93,6 +98,15 @@ public class MinioUtil {
      * @return 对象名称
      */
     public String uploadImage(MultipartFile file, String subDir) throws Exception {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("图片文件不能为空");
+        }
+        if (file.getSize() > MAX_IMAGE_SIZE) {
+            throw new IllegalArgumentException("图片不能超过 10MB");
+        }
+        if (file.getContentType() == null || !IMAGE_TYPES.contains(file.getContentType().toLowerCase())) {
+            throw new IllegalArgumentException("仅支持 JPG、PNG、WebP 或 GIF 图片");
+        }
         String originalName = file.getOriginalFilename();
         String fileExt = ".png";
         if (originalName != null && originalName.contains(".")) {

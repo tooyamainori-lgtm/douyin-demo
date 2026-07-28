@@ -2,6 +2,7 @@ package com.douyin.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.douyin.common.Result;
+import com.douyin.common.exception.BusinessException;
 import com.douyin.entity.ChatMessage;
 import com.douyin.entity.Follow;
 import com.douyin.entity.User;
@@ -51,16 +52,6 @@ public class ChatController {
             if (isMutual) friendIds.add(followeeId);
         }
 
-        // 也包含有过聊天记录但非互关的用户
-        List<ChatMessage> allMsgs = chatMessageMapper.selectList(
-                new LambdaQueryWrapper<ChatMessage>()
-                        .and(w -> w.eq(ChatMessage::getSenderId, userId).or().eq(ChatMessage::getReceiverId, userId))
-                        .orderByDesc(ChatMessage::getCreateTime));
-        for (ChatMessage m : allMsgs) {
-            Long otherId = m.getSenderId().equals(userId) ? m.getReceiverId() : m.getSenderId();
-            friendIds.add(otherId);
-        }
-
         // 组装联系人列表
         List<ChatContactVO> contacts = new ArrayList<>();
         for (Long friendId : friendIds) {
@@ -94,6 +85,8 @@ public class ChatController {
             @PathVariable Long userId,
             @RequestAttribute("userId") Long currentUserId,
             @RequestParam(defaultValue = "50") int limit) {
+        requireMutualFollow(currentUserId, userId);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
         List<ChatMessage> msgs = chatMessageMapper.selectList(
                 new LambdaQueryWrapper<ChatMessage>()
                         .and(w -> w
@@ -101,8 +94,9 @@ public class ChatController {
                                         .eq(ChatMessage::getReceiverId, userId))
                                 .or(w1 -> w1.eq(ChatMessage::getSenderId, userId)
                                         .eq(ChatMessage::getReceiverId, currentUserId)))
-                        .orderByAsc(ChatMessage::getCreateTime)
-                        .last("LIMIT " + limit));
+                        .orderByDesc(ChatMessage::getCreateTime)
+                        .last("LIMIT " + safeLimit));
+        Collections.reverse(msgs);
 
         // 标记对方发来的未读消息为已读
         chatMessageMapper.markRead(userId, currentUserId);
@@ -127,9 +121,13 @@ public class ChatController {
             @PathVariable Long userId,
             @RequestAttribute("userId") Long currentUserId,
             @RequestBody Map<String, String> body) {
+        requireMutualFollow(currentUserId, userId);
         String content = body.get("content");
         if (content == null || content.trim().isEmpty()) {
             return Result.fail(400, "消息内容不能为空");
+        }
+        if (content.trim().length() > 1000) {
+            return Result.fail(400, "消息内容不能超过 1000 个字符");
         }
         ChatMessage msg = new ChatMessage();
         msg.setSenderId(currentUserId);
@@ -156,5 +154,22 @@ public class ChatController {
     @GetMapping("/unread-count")
     public Result<Long> unreadCount(@RequestAttribute("userId") Long userId) {
         return Result.ok(chatMessageMapper.countUnread(userId));
+    }
+
+    private void requireMutualFollow(Long currentUserId, Long targetUserId) {
+        if (userMapper.selectById(targetUserId) == null) {
+            throw new BusinessException(404, "用户不存在");
+        }
+        boolean followsTarget = followMapper.selectCount(
+                new LambdaQueryWrapper<Follow>()
+                        .eq(Follow::getFollowerId, currentUserId)
+                        .eq(Follow::getFolloweeId, targetUserId)) > 0;
+        boolean followedBack = followMapper.selectCount(
+                new LambdaQueryWrapper<Follow>()
+                        .eq(Follow::getFollowerId, targetUserId)
+                        .eq(Follow::getFolloweeId, currentUserId)) > 0;
+        if (!followsTarget || !followedBack) {
+            throw new BusinessException(403, "只有互相关注的好友才能聊天");
+        }
     }
 }

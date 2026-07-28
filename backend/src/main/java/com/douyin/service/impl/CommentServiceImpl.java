@@ -17,6 +17,7 @@ import com.douyin.vo.CommentVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,14 +37,16 @@ public class CommentServiceImpl implements CommentService {
     private final NotificationService notificationService;
 
     @Override
+    @Transactional
     public CommentVO publish(CommentDTO dto, Long userId) {
-        // 校验视频存在
-        if (videoMapper.selectById(dto.getVideoId()) == null) {
+        com.douyin.entity.Video video = videoMapper.selectById(dto.getVideoId());
+        if (video == null || video.getStatus() == 0) {
             throw new BusinessException(2001, "视频不存在");
         }
-        // 如果回复评论，校验父评论存在
+        Comment parent = null;
         if (dto.getParentId() != null) {
-            if (commentMapper.selectById(dto.getParentId()) == null) {
+            parent = commentMapper.selectById(dto.getParentId());
+            if (parent == null || !parent.getVideoId().equals(dto.getVideoId())) {
                 throw new BusinessException(3001, "评论不存在");
             }
         }
@@ -53,22 +56,20 @@ public class CommentServiceImpl implements CommentService {
         comment.setVideoId(dto.getVideoId());
         comment.setContent(dto.getContent());
         comment.setParentId(dto.getParentId());
-        comment.setReplyUserId(dto.getReplyUserId());
+        comment.setReplyUserId(parent != null ? parent.getUserId() : null);
         comment.setLikeCount(0L);
         commentMapper.insert(comment);
 
-        // 更新视频评论数
-        com.douyin.entity.Video video = videoMapper.selectById(dto.getVideoId());
-        video.setCommentCount(video.getCommentCount() + 1);
-        videoMapper.updateById(video);
+        videoMapper.incrementCommentCount(dto.getVideoId());
 
         // 通知视频作者（自己评论自己视频不通知）
         if (!video.getUserId().equals(userId)) {
             notificationService.create(video.getUserId(), userId, "comment", dto.getVideoId(), "评论了你的视频");
         }
         // 如果是回复评论，通知被回复者（不重复通知自己或视频作者）
-        if (dto.getReplyUserId() != null && !dto.getReplyUserId().equals(userId) && !dto.getReplyUserId().equals(video.getUserId())) {
-            notificationService.create(dto.getReplyUserId(), userId, "comment", dto.getVideoId(), "回复了你的评论");
+        Long replyUserId = comment.getReplyUserId();
+        if (replyUserId != null && !replyUserId.equals(userId) && !replyUserId.equals(video.getUserId())) {
+            notificationService.create(replyUserId, userId, "comment", dto.getVideoId(), "回复了你的评论");
         }
 
         return buildCommentVO(comment, userId);
@@ -113,6 +114,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional
     public void delete(Long commentId, Long userId) {
         Comment comment = commentMapper.selectById(commentId);
         if (comment == null) {
@@ -121,11 +123,22 @@ public class CommentServiceImpl implements CommentService {
         if (!comment.getUserId().equals(userId)) {
             throw new BusinessException(403, "只能删除自己的评论");
         }
-        commentMapper.deleteById(commentId);
+        List<Comment> videoComments = commentMapper.selectList(
+                new LambdaQueryWrapper<Comment>().eq(Comment::getVideoId, comment.getVideoId()));
+        Set<Long> deleteIds = new LinkedHashSet<>();
+        collectDescendantIds(commentId, videoComments, deleteIds);
+        commentLikeMapper.delete(new LambdaQueryWrapper<CommentLike>()
+                .in(CommentLike::getCommentId, deleteIds));
+        deleteIds.forEach(commentMapper::deleteById);
+        videoMapper.decrementCommentCount(comment.getVideoId(), deleteIds.size());
     }
 
     @Override
+    @Transactional
     public void likeComment(Long commentId, Long userId) {
+        if (commentMapper.selectById(commentId) == null) {
+            throw new BusinessException(3001, "评论不存在");
+        }
         // 检查是否已点赞
         Long count = commentLikeMapper.selectCount(
                 new LambdaQueryWrapper<CommentLike>()
@@ -139,26 +152,26 @@ public class CommentServiceImpl implements CommentService {
         like.setCommentId(commentId);
         like.setUserId(userId);
         commentLikeMapper.insert(like);
-        // 评论点赞数 +1
-        Comment comment = commentMapper.selectById(commentId);
-        if (comment != null) {
-            comment.setLikeCount(comment.getLikeCount() + 1);
-            commentMapper.updateById(comment);
-        }
+        commentMapper.incrementLikeCount(commentId);
     }
 
     @Override
+    @Transactional
     public void unlikeComment(Long commentId, Long userId) {
         int deleted = commentLikeMapper.physicalDelete(commentId, userId);
         if (deleted == 0) {
             throw new BusinessException(3006, "还未点赞该评论");
         }
-        // 评论点赞数 -1
-        Comment comment = commentMapper.selectById(commentId);
-        if (comment != null && comment.getLikeCount() > 0) {
-            comment.setLikeCount(comment.getLikeCount() - 1);
-            commentMapper.updateById(comment);
+        commentMapper.decrementLikeCount(commentId);
+    }
+
+    private void collectDescendantIds(Long parentId, List<Comment> comments, Set<Long> ids) {
+        if (!ids.add(parentId)) {
+            return;
         }
+        comments.stream()
+                .filter(c -> parentId.equals(c.getParentId()))
+                .forEach(c -> collectDescendantIds(c.getId(), comments, ids));
     }
 
     /**

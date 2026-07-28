@@ -24,7 +24,9 @@ public class MyBatisPlusConfig {
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
         // 分页插件
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        PaginationInnerInterceptor pagination = new PaginationInnerInterceptor(DbType.MYSQL);
+        pagination.setMaxLimit(50L);
+        interceptor.addInnerInterceptor(pagination);
         // 防止全表更新或删除
         interceptor.addInnerInterceptor(new BlockAttackInnerInterceptor());
         return interceptor;

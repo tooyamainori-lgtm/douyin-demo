@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.douyin.entity.Video;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -12,6 +13,21 @@ import java.util.List;
  */
 @Mapper
 public interface VideoMapper extends BaseMapper<Video> {
+
+    @Update("UPDATE video SET view_count = view_count + 1 WHERE id = #{videoId} AND is_deleted = 0")
+    int incrementViewCount(Long videoId);
+
+    @Update("UPDATE video SET like_count = like_count + 1 WHERE id = #{videoId} AND is_deleted = 0")
+    int incrementLikeCount(Long videoId);
+
+    @Update("UPDATE video SET like_count = GREATEST(like_count - 1, 0) WHERE id = #{videoId} AND is_deleted = 0")
+    int decrementLikeCount(Long videoId);
+
+    @Update("UPDATE video SET comment_count = comment_count + 1 WHERE id = #{videoId} AND is_deleted = 0")
+    int incrementCommentCount(Long videoId);
+
+    @Update("UPDATE video SET comment_count = GREATEST(comment_count - #{count}, 0) WHERE id = #{videoId} AND is_deleted = 0")
+    int decrementCommentCount(Long videoId, int count);
 
     /** 查询用户所有视频的总获赞数 */
     @Select("SELECT COALESCE(SUM(like_count), 0) FROM video WHERE user_id = #{userId} AND is_deleted = 0")

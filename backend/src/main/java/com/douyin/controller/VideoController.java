@@ -168,6 +168,7 @@ public class VideoController {
      */
     @GetMapping("/hot")
     public Result<List<VideoVO>> hotRank(@RequestParam(defaultValue = "10") int top) {
+        top = Math.max(1, Math.min(top, 50));
         List<VideoVO> list = videoService.getHotRank(top);
         return Result.ok(list);
     }

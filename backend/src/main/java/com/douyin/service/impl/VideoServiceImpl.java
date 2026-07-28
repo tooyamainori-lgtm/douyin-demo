@@ -30,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -72,14 +73,25 @@ public class VideoServiceImpl implements VideoService {
         if (file.isEmpty()) {
             throw new BusinessException(400, "请选择视频文件");
         }
+        if (!StringUtils.hasText(title) || title.trim().length() > 100) {
+            throw new BusinessException(400, "视频标题长度必须为 1-100 个字符");
+        }
+        if (description != null && description.length() > 500) {
+            throw new BusinessException(400, "视频描述不能超过 500 个字符");
+        }
+        if (tags != null && tags.length() > 500) {
+            throw new BusinessException(400, "视频标签不能超过 500 个字符");
+        }
         String originalName = file.getOriginalFilename();
-        if (originalName != null && !originalName.toLowerCase().endsWith(".mp4")) {
+        String contentType = file.getContentType();
+        if (originalName == null || !originalName.toLowerCase().endsWith(".mp4") ||
+                (contentType != null && !"video/mp4".equalsIgnoreCase(contentType) &&
+                        !"application/octet-stream".equalsIgnoreCase(contentType))) {
             throw new BusinessException(400, "仅支持 MP4 格式");
         }
 
         // 2. 保存视频到临时文件
         String fileExt = ".mp4";
-        String tmpName = "douyin-upload-" + UUID.randomUUID().toString().replace("-", "") + fileExt;
         Path tmpVideo = null;
         String objectName;
         try {
@@ -97,6 +109,7 @@ public class VideoServiceImpl implements VideoService {
             log.info("视频已上传到 MinIO：{}", objectName);
         } catch (Exception e) {
             log.error("视频上传到 MinIO 失败", e);
+            try { Files.deleteIfExists(tmpVideo); } catch (Exception ignored) {}
             throw new BusinessException(2002, "上传失败，请重试");
         }
 
@@ -120,7 +133,7 @@ public class VideoServiceImpl implements VideoService {
         // 6. 构建视频实体
         Video video = new Video();
         video.setUserId(userId);
-        video.setTitle(title);
+        video.setTitle(title.trim());
         video.setDescription(description != null ? description : "");
         video.setVideoUrl(minioUtil.getPublicUrl(objectName));
         video.setCoverUrl(coverUrl);
@@ -193,14 +206,14 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
+    @Transactional
     public void recordView(Long videoId, Long userId) {
         Video video = videoMapper.selectById(videoId);
-        if (video != null) {
-            video.setViewCount(video.getViewCount() + 1);
-            videoMapper.updateById(video);
-            // 更新热门排行榜：播放 +1
-            redisUtil.addHotScore(videoId, 1);
+        if (video == null || video.getStatus() == 0) {
+            throw new BusinessException(2001, "视频不存在");
         }
+        videoMapper.incrementViewCount(videoId);
+        redisUtil.addHotScore(videoId, 1);
         // 记录观看历史（已登录用户）
         if (userId != null) {
             WatchHistory history = new WatchHistory();
@@ -222,7 +235,12 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
+    @Transactional
     public void like(Long videoId, Long userId) {
+        Video video = videoMapper.selectById(videoId);
+        if (video == null || video.getStatus() == 0) {
+            throw new BusinessException(2001, "视频不存在");
+        }
         // 检查是否已存在活跃的点赞记录
         Long count = likeRecordMapper.selectCount(
                 new LambdaQueryWrapper<LikeRecord>()
@@ -236,30 +254,20 @@ public class VideoServiceImpl implements VideoService {
         record.setUserId(userId);
         record.setVideoId(videoId);
         likeRecordMapper.insert(record);
-        // 更新视频点赞数
-        Video video = videoMapper.selectById(videoId);
-        if (video != null) {
-            video.setLikeCount(video.getLikeCount() + 1);
-            videoMapper.updateById(video);
-            // 更新热门排行榜：点赞 +3
-            redisUtil.addHotScore(videoId, 3);
-            // 通知视频作者
-            notificationService.create(video.getUserId(), userId, "like", videoId, "点赞了你的视频");
-        }
+        videoMapper.incrementLikeCount(videoId);
+        redisUtil.addHotScore(videoId, 3);
+        notificationService.create(video.getUserId(), userId, "like", videoId, "点赞了你的视频");
     }
 
     @Override
+    @Transactional
     public void unlike(Long videoId, Long userId) {
-        // 物理删除点赞记录
-        likeRecordMapper.physicalDelete(userId, videoId);
-        // 更新视频点赞数（确保不小于0）
-        Video video = videoMapper.selectById(videoId);
-        if (video != null && video.getLikeCount() > 0) {
-            video.setLikeCount(video.getLikeCount() - 1);
-            videoMapper.updateById(video);
-            // 取消点赞热度 -3
-            redisUtil.addHotScore(videoId, -3);
+        int deleted = likeRecordMapper.physicalDelete(userId, videoId);
+        if (deleted == 0) {
+            throw new BusinessException(3006, "尚未点赞该视频");
         }
+        videoMapper.decrementLikeCount(videoId);
+        redisUtil.addHotScore(videoId, -3);
     }
 
     @Override
